@@ -1,0 +1,20 @@
+upgrade_windows_to_datacenter:
+  cmd.script:
+    - source: salt://scripts/upgrade_to_datacenter.ps1  ## the name and path to the script being executed
+    - shell: powershell
+    - runas: SYSTEM
+    - timeout: 3600
+
+
+
+{%- set scritnameupgradetodatacenter = 'upgrade_to_datacenter.ps1' %}  # script file name
+
+upgrade_windows_to_datacenter:
+  cmd.script:
+    - name: salt://{{ slspath }}/files/{{ scritnameupgradetodatacenter }} # the name and path to the script being executed
+    - template: jinja
+    - shell: powershell
+    - env:
+      - ExecutionPolicy: "Unrestricted"
+
+{% endif %}

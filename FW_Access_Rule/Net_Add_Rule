@@ -1,0 +1,10 @@
+$Param = @{
+  name = "...."
+  source = 
+  sourcetenant = "mspax"
+  destination = 
+  destinationTenant = "mspax"
+  protocol = "tcp"
+  ports = 
+}
+New-NetAccess @Param

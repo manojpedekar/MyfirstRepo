@@ -1,0 +1,196 @@
+# =============================================================================
+# Get-VMwareToolsVersion.ps1
+# Description : Reads a CSV/Excel file containing IP, VM Name, and vCenter,
+#               connects to each vCenter using a single credential set,
+#               and retrieves VMware Tools info for each VM.
+# Requirements: VMware PowerCLI module installed
+#               Install-Module -Name VMware.PowerCLI -Scope CurrentUser
+# =============================================================================
+
+# ----------------------------------------------------------------------------- 
+# CONFIGURATION - Update these paths as needed
+# -----------------------------------------------------------------------------
+$InputFile  = "C:\Path\To\Your\VMList.csv"   # Supports .csv or .xlsx
+$OutputFile = "C:\Path\To\Output\VMwareTools_Results_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+
+# -----------------------------------------------------------------------------
+# PREREQUISITES CHECK
+# -----------------------------------------------------------------------------
+if (-not (Get-Module -ListAvailable -Name VMware.PowerCLI)) {
+    Write-Error "VMware PowerCLI is not installed. Run: Install-Module -Name VMware.PowerCLI -Scope CurrentUser"
+    exit 1
+}
+
+Import-Module VMware.PowerCLI -ErrorAction Stop
+
+# Suppress certificate warnings and CEIP prompt
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+Set-PowerCLIConfiguration -ParticipateInCEIP $false -Confirm:$false | Out-Null
+
+# -----------------------------------------------------------------------------
+# READ INPUT FILE
+# -----------------------------------------------------------------------------
+Write-Host "`n[INFO] Reading input file: $InputFile" -ForegroundColor Cyan
+
+$VMList = $null
+
+if ($InputFile -match '\.xlsx$') {
+    # Read Excel using COM object (requires Excel installed) or ImportExcel module
+    if (Get-Module -ListAvailable -Name ImportExcel) {
+        Import-Module ImportExcel
+        $VMList = Import-Excel -Path $InputFile
+    } else {
+        Write-Host "[INFO] ImportExcel module not found. Attempting via Excel COM object..." -ForegroundColor Yellow
+        $Excel   = New-Object -ComObject Excel.Application
+        $Excel.Visible = $false
+        $Workbook  = $Excel.Workbooks.Open($InputFile)
+        $Sheet     = $Workbook.Sheets.Item(1)
+        $RowCount  = ($Sheet.UsedRange.Rows).Count
+        $VMList    = @()
+        for ($i = 2; $i -le $RowCount; $i++) {
+            $VMList += [PSCustomObject]@{
+                IP      = $Sheet.Cells.Item($i, 1).Text
+                "VM Name" = $Sheet.Cells.Item($i, 2).Text
+                VCenter = $Sheet.Cells.Item($i, 3).Text
+            }
+        }
+        $Workbook.Close($false)
+        $Excel.Quit()
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Excel) | Out-Null
+    }
+} elseif ($InputFile -match '\.csv$') {
+    $VMList = Import-Csv -Path $InputFile
+} else {
+    Write-Error "Unsupported file format. Please provide a .csv or .xlsx file."
+    exit 1
+}
+
+if (-not $VMList -or $VMList.Count -eq 0) {
+    Write-Error "No data found in input file. Please check the file path and format."
+    exit 1
+}
+
+Write-Host "[INFO] Loaded $($VMList.Count) VM(s) from input file." -ForegroundColor Green
+
+# -----------------------------------------------------------------------------
+# PROMPT FOR CREDENTIALS (single set for all vCenters)
+# -----------------------------------------------------------------------------
+Write-Host "`n[INFO] Enter credentials to connect to vCenter(s)." -ForegroundColor Cyan
+$Credential = Get-Credential -Message "Enter vCenter credentials (used for all vCenters)"
+
+# -----------------------------------------------------------------------------
+# GROUP VMs BY vCENTER
+# -----------------------------------------------------------------------------
+$vCenterGroups = $VMList | Group-Object -Property { $_."VCenter".Trim() }
+Write-Host "[INFO] Found $($vCenterGroups.Count) unique vCenter(s) to process.`n" -ForegroundColor Cyan
+
+# -----------------------------------------------------------------------------
+# PROCESS EACH vCENTER
+# -----------------------------------------------------------------------------
+$Results = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+foreach ($Group in $vCenterGroups) {
+    $vCenterHost = $Group.Name
+    $VMsInGroup  = $Group.Group
+
+    Write-Host "======================================================" -ForegroundColor DarkCyan
+    Write-Host " Connecting to vCenter: $vCenterHost" -ForegroundColor Yellow
+    Write-Host " VMs to query        : $($VMsInGroup.Count)" -ForegroundColor Yellow
+    Write-Host "======================================================" -ForegroundColor DarkCyan
+
+    try {
+        $Connection = Connect-VIServer -Server $vCenterHost -Credential $Credential -ErrorAction Stop
+        Write-Host "[OK] Connected to $vCenterHost" -ForegroundColor Green
+    } catch {
+        Write-Warning "[FAILED] Could not connect to vCenter '$vCenterHost': $($_.Exception.Message)"
+        foreach ($VM in $VMsInGroup) {
+            $Results.Add([PSCustomObject]@{
+                "VM Name"             = $VM."VM Name"
+                "IP"                  = $VM."IP"
+                "vCenter"             = $vCenterHost
+                "Tools Version"       = "N/A"
+                "Tools Status"        = "N/A"
+                "Tools Running Status"= "N/A"
+                "Tools Version Type"  = "N/A"
+                "Power State"         = "N/A"
+                "Guest OS"            = "N/A"
+                "Remarks"             = "vCenter connection failed: $($_.Exception.Message)"
+            })
+        }
+        continue
+    }
+
+    foreach ($VMEntry in $VMsInGroup) {
+        $VMName = $VMEntry."VM Name".Trim()
+        Write-Host "  [*] Querying: $VMName" -ForegroundColor White -NoNewline
+
+        try {
+            $VM = Get-VM -Name $VMName -Server $Connection -ErrorAction Stop
+
+            $ToolsVersion      = $VM.Guest.ToolsVersion
+            $ToolsStatus       = $VM.Guest.ExtensionData.ToolsStatus
+            $ToolsRunningStatus= $VM.Guest.ExtensionData.ToolsRunningStatus
+            $ToolsVersionType  = $VM.Guest.ExtensionData.ToolsVersionStatus2
+            $PowerState        = $VM.PowerState
+            $GuestOS           = $VM.Guest.OSFullName
+
+            Write-Host " -> Tools: $ToolsVersion | Status: $ToolsStatus" -ForegroundColor Green
+
+            $Results.Add([PSCustomObject]@{
+                "VM Name"             = $VMName
+                "IP"                  = $VMEntry."IP"
+                "vCenter"             = $vCenterHost
+                "Tools Version"       = if ($ToolsVersion) { $ToolsVersion } else { "Not Installed" }
+                "Tools Status"        = $ToolsStatus
+                "Tools Running Status"= $ToolsRunningStatus
+                "Tools Version Type"  = $ToolsVersionType
+                "Power State"         = $PowerState
+                "Guest OS"            = $GuestOS
+                "Remarks"             = "OK"
+            })
+
+        } catch {
+            Write-Host " -> NOT FOUND or ERROR" -ForegroundColor Red
+            $Results.Add([PSCustomObject]@{
+                "VM Name"             = $VMName
+                "IP"                  = $VMEntry."IP"
+                "vCenter"             = $vCenterHost
+                "Tools Version"       = "N/A"
+                "Tools Status"        = "N/A"
+                "Tools Running Status"= "N/A"
+                "Tools Version Type"  = "N/A"
+                "Power State"         = "N/A"
+                "Guest OS"            = "N/A"
+                "Remarks"             = "Error: $($_.Exception.Message)"
+            })
+        }
+    }
+
+    Write-Host "`n[INFO] Disconnecting from $vCenterHost..." -ForegroundColor DarkGray
+    Disconnect-VIServer -Server $Connection -Confirm:$false | Out-Null
+}
+
+# -----------------------------------------------------------------------------
+# EXPORT RESULTS
+# -----------------------------------------------------------------------------
+Write-Host "`n[INFO] Exporting results to: $OutputFile" -ForegroundColor Cyan
+
+# Ensure output directory exists
+$OutputDir = Split-Path -Path $OutputFile -Parent
+if (-not (Test-Path $OutputDir)) {
+    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+}
+
+$Results | Export-Csv -Path $OutputFile -NoTypeInformation -Encoding UTF8
+
+Write-Host "[DONE] Results saved. Total VMs processed: $($Results.Count)" -ForegroundColor Green
+
+# -----------------------------------------------------------------------------
+# SUMMARY
+# -----------------------------------------------------------------------------
+Write-Host "`n===== SUMMARY =====" -ForegroundColor Cyan
+$Results | Group-Object "Remarks" | ForEach-Object {
+    Write-Host "  $($_.Name): $($_.Count) VM(s)" -ForegroundColor $(if ($_.Name -eq "OK") {"Green"} else {"Red"})
+}
+
+Write-Host "`n[INFO] Output file: $OutputFile`n" -ForegroundColor Cyan
