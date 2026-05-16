@@ -1,0 +1,12 @@
+{% if grains['os_family'] in ['Windows'] %}
+
+set_dns_update_required:
+  cmd.script:
+    - name: salt://{{ slspath }}/files/Update-DNSResolvers.ps1
+    - template: jinja
+    - shell: powershell
+    - env:
+      - ExecutionPolicy: "Unrestricted"
+
+{% endif %}
+

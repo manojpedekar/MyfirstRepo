@@ -1,0 +1,690 @@
+@model DomainMasterListViewModel
+@{
+    ViewData["Title"] = "Domain Master List";
+}
+
+<!-- Header with Title, Stats, and Add Button -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+        <h1 class="mb-0">
+            <i class="bi bi-diagram-3"></i> Domain Master List
+        </h1>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-primary fs-6" title="Total Domains">
+                <i class="bi bi-globe"></i> @Model.TotalCount Total
+            </span>
+            <span class="badge bg-success fs-6" title="Active Domains">
+                <i class="bi bi-check-circle"></i> @Model.ActiveCount Active
+            </span>
+            <span class="badge bg-secondary fs-6" title="Decommissioned Domains">
+                <i class="bi bi-x-circle"></i> @Model.DecommissionedCount Decom
+            </span>
+        </div>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Add Domain
+    </a>
+</div>
+
+<!-- Filter Toggle -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <span><i class="bi bi-list-ul"></i> Domains</span>
+            <!-- Domain Name Search -->
+            <div class="input-group input-group-sm" style="width: 250px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="domainSearch" class="form-control" placeholder="Filter by Domain or NetBIOS..." autocomplete="off">
+                <button type="button" class="btn btn-outline-secondary" id="clearSearch" style="display: none;" title="Clear search">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <span id="filteredCount" class="badge bg-info" style="display: none;"></span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Unified Filters Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                        id="filtersDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                    <i class="bi bi-funnel"></i> Filters
+                    <span id="activeFilterCount" class="badge bg-primary ms-1" style="display: none;">0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 280px;" aria-labelledby="filtersDropdown">
+                    <!-- View Section -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-muted small mb-2">VIEW</label>
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="inventoryFilter" id="invAll" value="all" checked>
+                                <label class="form-check-label small" for="invAll">All Domains</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="inventoryFilter" id="invWith" value="with">
+                                <label class="form-check-label small" for="invWith">With Inventory</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="inventoryFilter" id="invWithout" value="without">
+                                <label class="form-check-label small" for="invWithout">Without Inventory</label>
+                            </div>
+                        </div>
+                        <div class="form-check mt-2 mb-0">
+                            <input class="form-check-input" type="checkbox" id="showDecommissioned"
+                                   @(Model.IncludeDecommissioned ? "checked" : "")>
+                            <label class="form-check-label small" for="showDecommissioned">Include Decommissioned</label>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <!-- Baseline Section -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-muted small mb-1">BASELINE</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <label class="btn btn-outline-success btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="baseline-yes" autocomplete="off">
+                                Yes
+                            </label>
+                            <label class="btn btn-outline-danger btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="baseline-no" autocomplete="off">
+                                No
+                            </label>
+                            <label class="btn btn-outline-warning btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="baseline-inprogress" autocomplete="off">
+                                In Progress
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Cloud Section -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-muted small mb-1">CLOUD</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <label class="btn btn-outline-primary btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="cloud-1" autocomplete="off">
+                                Yes
+                            </label>
+                            <label class="btn btn-outline-secondary btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="cloud-2" autocomplete="off">
+                                No
+                            </label>
+                            <label class="btn btn-outline-dark btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="cloud-3" autocomplete="off">
+                                Never
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Status Flags Section -->
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-muted small mb-1">FLAGS</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <label class="btn btn-outline-secondary btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="decommissioned" autocomplete="off">
+                                Decom
+                            </label>
+                            <label class="btn btn-outline-info btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="3rdparty" autocomplete="off">
+                                3rd Party
+                            </label>
+                            <label class="btn btn-outline-warning btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="client" autocomplete="off">
+                                Client
+                            </label>
+                            <label class="btn btn-outline-danger btn-sm status-filter-btn">
+                                <input type="checkbox" class="btn-check" value="patchhold" autocomplete="off">
+                                Patch Hold
+                            </label>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="clearAllFilters()">
+                        <i class="bi bi-x-circle"></i> Clear All Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Model.Domains.Count == 0)
+        {
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> No domains found.
+                <a asp-action="Create">Add your first domain</a>.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table id="domainTable" class="table table-striped table-hover sortable-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort-type="text">Domain Name <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                            <th class="sortable" data-sort-type="text">NetBIOS <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                            <th class="sortable" data-sort-type="text">Business Unit <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                            <th class="sortable" data-sort-type="text">Responsibility <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                            <th class="status-col">Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var domain in Model.Domains)
+                        {
+                            var statusFlags = new List<string>();
+                            if (domain.IsDecommissioned) statusFlags.Add("decommissioned");
+                            if (domain.IsThirdPartyManaged) statusFlags.Add("3rdparty");
+                            if (domain.IsClientFacing) statusFlags.Add("client");
+                            if (domain.IsPatchHold) statusFlags.Add("patchhold");
+                            // Add baseline status flag
+                            if (!string.IsNullOrEmpty(domain.BaselineStatus))
+                            {
+                                statusFlags.Add("baseline-" + domain.BaselineStatus.ToLower().Replace(" ", ""));
+                            }
+                            // Add cloud integration flag
+                            statusFlags.Add("cloud-" + domain.IsCloudIntegrated);
+                            <tr class="@(domain.IsDecommissioned ? "table-secondary" : "")" data-statuses="@string.Join(",", statusFlags)" data-has-inventory="@domain.HasCollection.ToString().ToLower()">
+                                <td data-sort-value="@domain.DomainName">
+                                    <a asp-action="Edit" asp-route-id="@domain.DomainID" class="text-decoration-none">
+                                        <strong>@domain.DomainName</strong>
+                                    </a>
+                                </td>
+                                <td data-sort-value="@(domain.NetBIOSName ?? "")">@(domain.NetBIOSName ?? "-")</td>
+                                <td data-sort-value="@(domain.BusinessUnit ?? "")">@(domain.BusinessUnit ?? "-")</td>
+                                <td data-sort-value="@(domain.DSResponsibilityLevel ?? "")">
+                                    @if (!string.IsNullOrEmpty(domain.DSResponsibilityLevel))
+                                    {
+                                        <span class="badge @GetResponsibilityBadgeClass(domain.DSResponsibilityLevel)">
+                                            @domain.DSResponsibilityLevel
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="status-col">
+                                    <div class="badge-container">
+                                        @* Baseline Badge *@
+                                        @if (!string.IsNullOrEmpty(domain.BaselineStatus))
+                                        {
+                                            <span class="badge @GetBaselineBadgeClass(domain.BaselineStatus)" title="Baseline Status">
+                                                BL: @domain.BaselineStatus
+                                            </span>
+                                        }
+                                        @* Cloud Integration Badge *@
+                                        <span class="badge @GetCloudBadgeClass(domain.IsCloudIntegrated)" title="Cloud Integration">
+                                            <i class="bi bi-cloud"></i> @GetCloudBadgeText(domain.IsCloudIntegrated)
+                                        </span>
+                                        @* Status Flags *@
+                                        @if (domain.IsDecommissioned)
+                                        {
+                                            <span class="badge bg-secondary">Decommissioned</span>
+                                        }
+                                        @if (domain.IsThirdPartyManaged)
+                                        {
+                                            <span class="badge bg-info" title="Third Party Managed">3rd Party</span>
+                                        }
+                                        @if (domain.IsClientFacing)
+                                        {
+                                            <span class="badge bg-warning text-dark" title="Client Facing">Client</span>
+                                        }
+                                        @if (domain.IsPatchHold)
+                                        {
+                                            <span class="badge bg-danger" title="Patch Hold">Patch Hold</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <a asp-action="Edit" asp-route-id="@domain.DomainID" class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    @if (domain.HasCollection)
+                                    {
+                                        <a asp-action="Logs" asp-route-id="@domain.DomainID" class="btn btn-sm btn-outline-secondary" title="View Collection Logs">
+                                            <i class="bi bi-journal-text"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="No collection data available">
+                                            <i class="bi bi-journal-text"></i>
+                                        </button>
+                                    }
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            onclick="confirmDelete(@domain.DomainID, '@domain.DomainName.Replace("'", "\\'")')"
+                                            title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the domain <strong id="deleteDomainName"></strong>?</p>
+                <p class="text-danger mb-0">This will also delete all associated notes. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" asp-action="Delete" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="deleteIdInput" />
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sortable-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .sortable-table th.sortable:hover {
+        background-color: rgba(0, 0, 0, 0.075);
+    }
+    .sortable-table th .sort-icon {
+        opacity: 0.3;
+        font-size: 0.75em;
+    }
+    .sortable-table th.sort-asc .sort-icon,
+    .sortable-table th.sort-desc .sort-icon {
+        opacity: 1;
+    }
+    /* Status column styling */
+    .status-col {
+        min-width: 280px;
+        max-width: 380px;
+    }
+    .badge-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .badge-container .badge {
+        font-size: 0.75em;
+    }
+    /* Filter toggle buttons */
+    .status-filter-btn {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    .status-filter-btn input.btn-check:checked + & ,
+    .status-filter-btn:has(input:checked) {
+        color: #fff !important;
+    }
+    .btn-outline-success:has(input:checked) { background-color: var(--bs-success); border-color: var(--bs-success); color: #fff !important; }
+    .btn-outline-danger:has(input:checked) { background-color: var(--bs-danger); border-color: var(--bs-danger); color: #fff !important; }
+    .btn-outline-warning:has(input:checked) { background-color: var(--bs-warning); border-color: var(--bs-warning); color: #000 !important; }
+    .btn-outline-primary:has(input:checked) { background-color: var(--bs-primary); border-color: var(--bs-primary); color: #fff !important; }
+    .btn-outline-secondary:has(input:checked) { background-color: var(--bs-secondary); border-color: var(--bs-secondary); color: #fff !important; }
+    .btn-outline-dark:has(input:checked) { background-color: var(--bs-dark); border-color: var(--bs-dark); color: #fff !important; }
+    .btn-outline-info:has(input:checked) { background-color: var(--bs-info); border-color: var(--bs-info); color: #fff !important; }
+</style>
+
+@section Scripts {
+<script>
+    var showDecommissionedStorageKey = 'dml_showDecommissioned';
+    var domainSearchStorageKey = 'dml_domainSearch';
+    var inventoryFilterStorageKey = 'dml_inventoryFilter';
+
+    function toggleDecommissioned(include) {
+        sessionStorage.setItem(showDecommissionedStorageKey, include ? 'true' : 'false');
+        window.location.href = '@Url.Action("Index")' + '?includeDecommissioned=' + include;
+    }
+
+    function confirmDelete(id, name) {
+        document.getElementById('deleteDomainName').textContent = name;
+        document.getElementById('deleteIdInput').value = id;
+        var modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        modal.show();
+    }
+
+    // Domain name search filter
+    function applyDomainSearch() {
+        var searchInput = document.getElementById('domainSearch');
+        var clearBtn = document.getElementById('clearSearch');
+        var searchTerm = (searchInput.value || '').toLowerCase().trim();
+
+        // Show/hide clear button
+        clearBtn.style.display = searchTerm ? '' : 'none';
+
+        // Save search term
+        if (searchTerm) {
+            sessionStorage.setItem(domainSearchStorageKey, searchTerm);
+        } else {
+            sessionStorage.removeItem(domainSearchStorageKey);
+        }
+
+        // Apply combined filters (search + status)
+        applyAllFilters();
+    }
+
+    function clearDomainSearch() {
+        var searchInput = document.getElementById('domainSearch');
+        searchInput.value = '';
+        sessionStorage.removeItem(domainSearchStorageKey);
+        applyDomainSearch();
+    }
+
+    function getInventoryFilter() {
+        var checked = document.querySelector('input[name="inventoryFilter"]:checked');
+        return checked ? checked.value : 'all';
+    }
+
+    function applyAllFilters() {
+        var tbody = document.querySelector('#domainTable tbody');
+        if (!tbody) return;
+
+        var searchTerm = (document.getElementById('domainSearch').value || '').toLowerCase().trim();
+        var selectedFilters = getSelectedFilters();
+        var inventoryFilter = getInventoryFilter();
+        var rows = tbody.querySelectorAll('tr');
+        var visibleCount = 0;
+        var totalCount = rows.length;
+
+        rows.forEach(function(row) {
+            var domainName = (row.cells[0].getAttribute('data-sort-value') || '').toLowerCase();
+            var netbiosName = (row.cells[1].getAttribute('data-sort-value') || '').toLowerCase();
+            var rowStatuses = (row.getAttribute('data-statuses') || '').split(',').filter(function(s) { return s; });
+            var hasInventory = row.getAttribute('data-has-inventory') === 'true';
+
+            // Check domain name and NetBIOS search
+            var matchesSearch = !searchTerm || domainName.includes(searchTerm) || netbiosName.includes(searchTerm);
+
+            // Check status filters
+            var matchesStatus = selectedFilters.length === 0 || selectedFilters.some(function(filter) {
+                return rowStatuses.includes(filter);
+            });
+
+            // Check inventory filter
+            var matchesInventory = inventoryFilter === 'all' ||
+                (inventoryFilter === 'with' && hasInventory) ||
+                (inventoryFilter === 'without' && !hasInventory);
+
+            // Show only if all conditions are met
+            var visible = matchesSearch && matchesStatus && matchesInventory;
+            row.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+
+        // Update filtered count badge
+        var countBadge = document.getElementById('filteredCount');
+        if (countBadge) {
+            if (searchTerm || selectedFilters.length > 0 || inventoryFilter !== 'all') {
+                countBadge.textContent = visibleCount + ' of ' + totalCount + ' shown';
+                countBadge.style.display = '';
+            } else {
+                countBadge.style.display = 'none';
+            }
+        }
+
+        // Update active filter count badge on Filters button
+        var activeFilterCount = document.getElementById('activeFilterCount');
+        if (activeFilterCount) {
+            var count = selectedFilters.length + (inventoryFilter !== 'all' ? 1 : 0);
+            if (count > 0) {
+                activeFilterCount.textContent = count;
+                activeFilterCount.style.display = '';
+            } else {
+                activeFilterCount.style.display = 'none';
+            }
+        }
+    }
+
+    // Status filter functions
+    var statusFilterStorageKey = 'dml_statusFilters';
+
+    function getSelectedFilters() {
+        var filters = [];
+        document.querySelectorAll('#filtersDropdown + .dropdown-menu .status-filter-btn input:checked').forEach(function(cb) {
+            filters.push(cb.value);
+        });
+        return filters;
+    }
+
+    function applyStatusFilters() {
+        // Save to session storage
+        var selectedFilters = getSelectedFilters();
+        sessionStorage.setItem(statusFilterStorageKey, JSON.stringify(selectedFilters));
+
+        // Save inventory filter
+        sessionStorage.setItem(inventoryFilterStorageKey, getInventoryFilter());
+
+        // Apply combined filters
+        applyAllFilters();
+    }
+
+    function clearAllFilters() {
+        // Clear status filter checkboxes
+        document.querySelectorAll('#filtersDropdown + .dropdown-menu .status-filter-btn input').forEach(function(cb) {
+            cb.checked = false;
+        });
+        // Reset inventory filter to "all"
+        var invAll = document.getElementById('invAll');
+        if (invAll) invAll.checked = true;
+        // Clear storage
+        sessionStorage.removeItem(statusFilterStorageKey);
+        sessionStorage.setItem(inventoryFilterStorageKey, 'all');
+        // Apply filters
+        applyAllFilters();
+    }
+
+    function restoreStatusFilters() {
+        var saved = sessionStorage.getItem(statusFilterStorageKey);
+        if (saved) {
+            try {
+                var filters = JSON.parse(saved);
+                filters.forEach(function(filter) {
+                    var cb = document.querySelector('#filtersDropdown + .dropdown-menu .status-filter-btn input[value="' + filter + '"]');
+                    if (cb) cb.checked = true;
+                });
+                // Don't call applyStatusFilters here - applyAllFilters will be called after
+            } catch (e) {
+                // Ignore errors
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Restore Show Decommissioned toggle state from session storage
+        var savedShowDecommissioned = sessionStorage.getItem(showDecommissionedStorageKey);
+        var currentShowDecommissioned = @(Model.IncludeDecommissioned ? "true" : "false");
+
+        // If there's a saved preference that differs from current state, redirect to apply it
+        if (savedShowDecommissioned !== null) {
+            var savedValue = savedShowDecommissioned === 'true';
+            if (savedValue !== currentShowDecommissioned) {
+                // Redirect to apply the saved preference
+                window.location.href = '@Url.Action("Index")' + '?includeDecommissioned=' + savedValue;
+                return; // Stop further initialization since we're redirecting
+            }
+        }
+
+        // Set up Show Decommissioned checkbox in filter panel
+        var showDecomCheckbox = document.getElementById('showDecommissioned');
+        if (showDecomCheckbox) {
+            showDecomCheckbox.addEventListener('change', function() {
+                toggleDecommissioned(this.checked);
+            });
+        }
+
+        // Set up domain search input
+        var searchInput = document.getElementById('domainSearch');
+        var clearBtn = document.getElementById('clearSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', applyDomainSearch);
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    clearDomainSearch();
+                }
+            });
+
+            // Restore saved search term
+            var savedSearch = sessionStorage.getItem(domainSearchStorageKey);
+            if (savedSearch) {
+                searchInput.value = savedSearch;
+                if (clearBtn) clearBtn.style.display = '';
+            }
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', clearDomainSearch);
+        }
+
+        // Set up inventory filter radio buttons
+        document.querySelectorAll('input[name="inventoryFilter"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                sessionStorage.setItem(inventoryFilterStorageKey, this.value);
+                applyAllFilters();
+            });
+        });
+
+        // Restore saved inventory filter
+        var savedInventoryFilter = sessionStorage.getItem(inventoryFilterStorageKey);
+        if (savedInventoryFilter) {
+            var radio = document.querySelector('input[name="inventoryFilter"][value="' + savedInventoryFilter + '"]');
+            if (radio) radio.checked = true;
+        }
+
+        // Set up status filter checkboxes
+        document.querySelectorAll('#filtersDropdown + .dropdown-menu .status-filter-btn input').forEach(function(cb) {
+            cb.addEventListener('change', applyStatusFilters);
+        });
+
+        // Restore saved status filters
+        restoreStatusFilters();
+
+        // Apply all filters (search + status) after restoration
+        applyAllFilters();
+
+        // Table sorting logic
+        var table = document.getElementById('domainTable');
+        if (table) {
+            var headers = table.querySelectorAll('th.sortable');
+            var tbody = table.querySelector('tbody');
+            var sortStorageKey = 'dml_sortState';
+
+            function sortTable(columnIndex, ascending) {
+                var header = headers[columnIndex];
+                if (!header) return;
+
+                var sortType = header.getAttribute('data-sort-type') || 'text';
+
+                headers.forEach(function(h) {
+                    h.classList.remove('sort-asc', 'sort-desc');
+                    var icon = h.querySelector('.sort-icon');
+                    if (icon) {
+                        icon.classList.remove('bi-arrow-up', 'bi-arrow-down');
+                        icon.classList.add('bi-arrow-down-up');
+                    }
+                });
+
+                header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+                var headerIcon = header.querySelector('.sort-icon');
+                if (headerIcon) {
+                    headerIcon.classList.remove('bi-arrow-down-up');
+                    headerIcon.classList.add(ascending ? 'bi-arrow-up' : 'bi-arrow-down');
+                }
+
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort(function(a, b) {
+                    var cellA = a.cells[columnIndex];
+                    var cellB = b.cells[columnIndex];
+                    var valueA = cellA.getAttribute('data-sort-value') || cellA.textContent.trim();
+                    var valueB = cellB.getAttribute('data-sort-value') || cellB.textContent.trim();
+
+                    var result = valueA.localeCompare(valueB, undefined, { sensitivity: 'base' });
+                    return ascending ? result : -result;
+                });
+
+                rows.forEach(function(row) {
+                    tbody.appendChild(row);
+                });
+
+                sessionStorage.setItem(sortStorageKey, JSON.stringify({ column: columnIndex, ascending: ascending }));
+            }
+
+            headers.forEach(function(header, columnIndex) {
+                header.addEventListener('click', function() {
+                    var isAscending = !header.classList.contains('sort-asc');
+                    sortTable(columnIndex, isAscending);
+                });
+            });
+
+            // Restore or default to Domain Name ascending (column 0)
+            var savedState = sessionStorage.getItem(sortStorageKey);
+            if (savedState) {
+                try {
+                    var state = JSON.parse(savedState);
+                    sortTable(state.column, state.ascending);
+                } catch (e) {
+                    sortTable(0, true);
+                }
+            } else {
+                sortTable(0, true);
+            }
+        }
+    });
+</script>
+}
+
+@functions {
+    string GetResponsibilityBadgeClass(string level)
+    {
+        return level switch
+        {
+            "In charge" => "bg-primary",
+            "Consult" => "bg-info",
+            "Transition" => "bg-warning text-dark",
+            "None" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetBaselineBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Yes" => "bg-success",
+            "No" => "bg-danger",
+            "In Progress" => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetCloudBadgeClass(byte cloudState)
+    {
+        return cloudState switch
+        {
+            1 => "bg-primary",    // Yes
+            2 => "bg-secondary",  // No
+            3 => "bg-dark",       // Never
+            _ => "bg-secondary"
+        };
+    }
+
+    string GetCloudBadgeText(byte cloudState)
+    {
+        return cloudState switch
+        {
+            1 => "Yes",
+            2 => "No",
+            3 => "Never",
+            _ => "Unknown"
+        };
+    }
+}

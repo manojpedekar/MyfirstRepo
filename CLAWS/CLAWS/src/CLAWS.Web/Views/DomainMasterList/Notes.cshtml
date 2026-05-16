@@ -1,0 +1,318 @@
+@model DomainNotesViewModel
+@{
+    ViewData["Title"] = $"Notes: {Model.DomainName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-chat-left-text"></i> Notes: @Model.DomainName
+    </h1>
+    <a asp-action="Edit" asp-route-id="@Model.DomainID" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Domain
+    </a>
+</div>
+
+<div class="row">
+    <!-- Notes Grid -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Notes</span>
+                <div class="d-flex align-items-center gap-2">
+                    <select id="noteTypeFilter" class="form-select form-select-sm" style="width: auto;">
+                        <option value="all">All Notes</option>
+                        <option value="user">User Notes</option>
+                        <option value="system">System Notes</option>
+                    </select>
+                    <span class="badge bg-secondary" id="noteCount">@Model.Notes.Count</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Notes.Count == 0)
+                {
+                    <div class="alert alert-info m-3 mb-0">
+                        <i class="bi bi-info-circle"></i> No notes found. Add the first note using the form.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table id="notesTable" class="table table-striped table-hover mb-0 sortable-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort-type="text">Subject <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                    <th class="sortable" data-sort-type="text">Created By <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                    <th class="sortable" data-sort-type="date">Created At <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var note in Model.Notes)
+                                {
+                                    var isSelected = Model.SelectedNoteId == note.DomainNoteID;
+                                    <tr class="note-row @(isSelected ? "table-primary" : "")"
+                                        data-note-id="@note.DomainNoteID"
+                                        data-note-subject="@(note.NoteSubject ?? "(No Subject)")"
+                                        data-note-text="@note.NoteText"
+                                        data-note-created-by="@(note.CreatedBy ?? "Unknown")"
+                                        data-note-created-at="@note.CreatedAt.ToString("o")"
+                                        data-is-system="@note.IsSystem.ToString().ToLower()"
+                                        style="cursor: pointer;">
+                                        <td data-sort-value="@(note.NoteSubject ?? "")">
+                                            <strong>@(string.IsNullOrEmpty(note.NoteSubject) ? "(No Subject)" : note.NoteSubject)</strong>
+                                            @if (note.IsSystem)
+                                            {
+                                                <span class="badge bg-info ms-1" title="System-generated note">System</span>
+                                            }
+                                        </td>
+                                        <td data-sort-value="@(note.CreatedBy ?? "")">@(note.CreatedBy ?? "Unknown")</td>
+                                        <td data-sort-value="@note.CreatedAt.ToString("o")">
+                                            <span data-utc="@note.CreatedAt.ToString("o")" data-format="short">
+                                                @note.CreatedAt.ToString("g")
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Note Detail Panel -->
+        <div class="card mb-4" id="noteDetailCard" style="display: none;">
+            <div class="card-header">
+                <i class="bi bi-file-text"></i> <span id="noteDetailSubject">Note Details</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-2 text-muted small">
+                    <i class="bi bi-person"></i> <span id="noteDetailCreatedBy"></span>
+                    <span class="mx-2">|</span>
+                    <i class="bi bi-clock"></i> <span id="noteDetailCreatedAt"></span>
+                </div>
+                <textarea id="noteDetailText" class="form-control" rows="8" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Note Form -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-plus-lg"></i> Add New Note
+            </div>
+            <div class="card-body">
+                <form asp-action="AddNote" asp-route-id="@Model.DomainID" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label for="noteSubject" class="form-label">Subject</label>
+                        <input type="text" name="noteSubject" id="noteSubject" class="form-control"
+                               maxlength="200" placeholder="Brief subject line...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="noteText" class="form-label">Note <span class="text-danger">*</span></label>
+                        <textarea name="noteText" id="noteText" class="form-control" rows="6" required
+                                  placeholder="Enter your note here..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg"></i> Add Note
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sortable-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .sortable-table th.sortable:hover {
+        background-color: rgba(0, 0, 0, 0.075);
+    }
+    .sortable-table th .sort-icon {
+        opacity: 0.3;
+        font-size: 0.75em;
+    }
+    .sortable-table th.sort-asc .sort-icon,
+    .sortable-table th.sort-desc .sort-icon {
+        opacity: 1;
+    }
+</style>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var detailCard = document.getElementById('noteDetailCard');
+        var detailSubject = document.getElementById('noteDetailSubject');
+        var detailText = document.getElementById('noteDetailText');
+        var detailCreatedBy = document.getElementById('noteDetailCreatedBy');
+        var detailCreatedAt = document.getElementById('noteDetailCreatedAt');
+
+        function selectNote(row) {
+            // Remove selection from all rows
+            document.querySelectorAll('.note-row').forEach(function(r) {
+                r.classList.remove('table-primary');
+            });
+
+            // Add selection to clicked row
+            row.classList.add('table-primary');
+
+            // Show detail card
+            detailCard.style.display = 'block';
+
+            // Populate details
+            detailSubject.textContent = row.getAttribute('data-note-subject');
+            detailText.value = row.getAttribute('data-note-text');
+            detailCreatedBy.textContent = row.getAttribute('data-note-created-by');
+
+            // Format the date
+            var createdAt = new Date(row.getAttribute('data-note-created-at'));
+            detailCreatedAt.textContent = createdAt.toLocaleString();
+        }
+
+        // Set up row click handlers
+        function setupRowClickHandlers() {
+            document.querySelectorAll('.note-row').forEach(function(row) {
+                row.addEventListener('click', function() {
+                    selectNote(this);
+                });
+            });
+        }
+        setupRowClickHandlers();
+
+        // Auto-select if there's a selected note from URL
+        var selectedRow = document.querySelector('.note-row.table-primary');
+        if (selectedRow) {
+            selectNote(selectedRow);
+            selectedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Note type filter logic
+        var noteTypeFilter = document.getElementById('noteTypeFilter');
+        var noteCountBadge = document.getElementById('noteCount');
+        var filterStorageKey = 'dml_notes_filterState_@Model.DomainID';
+
+        function applyFilter(filterValue) {
+            var rows = document.querySelectorAll('.note-row');
+            var visibleCount = 0;
+
+            rows.forEach(function(row) {
+                var isSystem = row.getAttribute('data-is-system') === 'true';
+                var shouldShow = false;
+
+                if (filterValue === 'all') {
+                    shouldShow = true;
+                } else if (filterValue === 'user') {
+                    shouldShow = !isSystem;
+                } else if (filterValue === 'system') {
+                    shouldShow = isSystem;
+                }
+
+                row.style.display = shouldShow ? '' : 'none';
+                if (shouldShow) visibleCount++;
+            });
+
+            // Update the badge count
+            noteCountBadge.textContent = visibleCount;
+
+            // Hide detail card if currently selected note is filtered out
+            var selectedRow = document.querySelector('.note-row.table-primary');
+            if (selectedRow && selectedRow.style.display === 'none') {
+                detailCard.style.display = 'none';
+            }
+
+            // Save filter state
+            sessionStorage.setItem(filterStorageKey, filterValue);
+        }
+
+        noteTypeFilter.addEventListener('change', function() {
+            applyFilter(this.value);
+        });
+
+        // Restore filter state from session storage
+        var savedFilter = sessionStorage.getItem(filterStorageKey);
+        if (savedFilter) {
+            noteTypeFilter.value = savedFilter;
+            applyFilter(savedFilter);
+        }
+
+        // Table sorting logic
+        var table = document.getElementById('notesTable');
+        if (table) {
+            var headers = table.querySelectorAll('th.sortable');
+            var tbody = table.querySelector('tbody');
+            var sortStorageKey = 'dml_notes_sortState_@Model.DomainID';
+
+            function sortTable(columnIndex, ascending) {
+                var header = headers[columnIndex];
+                if (!header) return;
+
+                var sortType = header.getAttribute('data-sort-type') || 'text';
+
+                headers.forEach(function(h) {
+                    h.classList.remove('sort-asc', 'sort-desc');
+                    var icon = h.querySelector('.sort-icon');
+                    if (icon) {
+                        icon.classList.remove('bi-arrow-up', 'bi-arrow-down');
+                        icon.classList.add('bi-arrow-down-up');
+                    }
+                });
+
+                header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+                var headerIcon = header.querySelector('.sort-icon');
+                if (headerIcon) {
+                    headerIcon.classList.remove('bi-arrow-down-up');
+                    headerIcon.classList.add(ascending ? 'bi-arrow-up' : 'bi-arrow-down');
+                }
+
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort(function(a, b) {
+                    var cellA = a.cells[columnIndex];
+                    var cellB = b.cells[columnIndex];
+                    var valueA = cellA.getAttribute('data-sort-value') || cellA.textContent.trim();
+                    var valueB = cellB.getAttribute('data-sort-value') || cellB.textContent.trim();
+
+                    var result;
+                    if (sortType === 'date') {
+                        result = new Date(valueA) - new Date(valueB);
+                    } else {
+                        result = valueA.localeCompare(valueB, undefined, { sensitivity: 'base' });
+                    }
+                    return ascending ? result : -result;
+                });
+
+                rows.forEach(function(row) {
+                    tbody.appendChild(row);
+                });
+
+                sessionStorage.setItem(sortStorageKey, JSON.stringify({ column: columnIndex, ascending: ascending }));
+            }
+
+            headers.forEach(function(header, columnIndex) {
+                header.addEventListener('click', function(e) {
+                    // Prevent sorting when clicking the sort icon triggers row selection
+                    e.stopPropagation();
+                    var isAscending = !header.classList.contains('sort-asc');
+                    sortTable(columnIndex, isAscending);
+                });
+            });
+
+            // Restore or default to Created At descending (column 2)
+            var savedState = sessionStorage.getItem(sortStorageKey);
+            if (savedState) {
+                try {
+                    var state = JSON.parse(savedState);
+                    sortTable(state.column, state.ascending);
+                } catch (e) {
+                    sortTable(2, false); // Default: Created At descending (newest first)
+                }
+            } else {
+                sortTable(2, false); // Default: Created At descending (newest first)
+            }
+        }
+    });
+</script>
+}

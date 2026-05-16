@@ -1,0 +1,145 @@
+@model DomainEditViewModel
+@* Site Links Modal - Lazy loaded content *@
+
+<div class="modal fade" id="siteLinksModal" tabindex="-1" aria-labelledby="siteLinksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="siteLinksModalLabel">
+                    <i class="bi bi-link-45deg"></i> Site Links
+                    <span class="badge bg-secondary ms-2" id="siteLinksCount">
+                        @(Model.SitesAndServices?.SiteLinkCount ?? 0)
+                    </span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="siteLinksLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading site links...</p>
+                </div>
+                <div id="siteLinksError" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle"></i> <span id="siteLinksErrorMessage"></span>
+                </div>
+                <table class="table table-hover table-sm mb-0 d-none" id="siteLinksTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Site Link Name</th>
+                            <th class="text-center" style="width: 80px;">Cost</th>
+                            <th class="text-center" style="width: 80px;">Interval</th>
+                            <th>Connected Sites</th>
+                        </tr>
+                    </thead>
+                    <tbody id="siteLinksBody">
+                    </tbody>
+                </table>
+                <div id="siteLinksLoadMore" class="text-center py-3 d-none">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadMoreSiteLinks()">
+                        <i class="bi bi-arrow-down-circle"></i> Load More
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let siteLinksLoaded = false;
+        let siteLinksSkip = 0;
+        const siteLinksPageSize = 50;
+        let siteLinksTotal = 0;
+
+        const modal = document.getElementById('siteLinksModal');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function () {
+                if (!siteLinksLoaded) {
+                    loadSiteLinks();
+                }
+            });
+        }
+
+        window.loadSiteLinks = function() {
+            const domainId = @Model.Domain.DomainID;
+
+            document.getElementById('siteLinksLoading').classList.remove('d-none');
+            document.getElementById('siteLinksTable').classList.add('d-none');
+            document.getElementById('siteLinksError').classList.add('d-none');
+
+            fetch(`/DomainMasterList/GetSiteLinks?domainId=${domainId}&skip=${siteLinksSkip}&take=${siteLinksPageSize}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('siteLinksLoading').classList.add('d-none');
+
+                    if (!data.success) {
+                        document.getElementById('siteLinksError').classList.remove('d-none');
+                        document.getElementById('siteLinksErrorMessage').textContent = data.message;
+                        return;
+                    }
+
+                    siteLinksTotal = data.totalCount;
+                    document.getElementById('siteLinksCount').textContent = siteLinksTotal;
+
+                    const tbody = document.getElementById('siteLinksBody');
+                    if (siteLinksSkip === 0) {
+                        tbody.innerHTML = '';
+                    }
+
+                    data.siteLinks.forEach(function(link) {
+                        const costClass = link.cost <= 100 ? 'success' : link.cost <= 500 ? 'warning' : 'danger';
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <strong>${escapeHtml(link.siteLinkName)}</strong>
+                                ${link.description ? `<br/><small class="text-muted">${escapeHtml(link.description)}</small>` : ''}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-${costClass}">${link.cost ?? '—'}</span>
+                            </td>
+                            <td class="text-center">
+                                ${link.replicationInterval ? `${link.replicationInterval} min` : '—'}
+                            </td>
+                            <td>
+                                ${link.sites && link.sites.length > 0
+                                    ? link.sites.map(s => `<span class="badge bg-light text-dark me-1">${escapeHtml(s)}</span>`).join('')
+                                    : '<span class="text-muted">None</span>'}
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    document.getElementById('siteLinksTable').classList.remove('d-none');
+                    siteLinksLoaded = true;
+                    siteLinksSkip += data.siteLinks.length;
+
+                    // Show/hide load more button
+                    if (data.hasMore) {
+                        document.getElementById('siteLinksLoadMore').classList.remove('d-none');
+                    } else {
+                        document.getElementById('siteLinksLoadMore').classList.add('d-none');
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('siteLinksLoading').classList.add('d-none');
+                    document.getElementById('siteLinksError').classList.remove('d-none');
+                    document.getElementById('siteLinksErrorMessage').textContent = 'Failed to load site links: ' + error.message;
+                });
+        };
+
+        window.loadMoreSiteLinks = function() {
+            loadSiteLinks();
+        };
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    })();
+</script>

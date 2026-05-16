@@ -1,0 +1,351 @@
+@model StatusViewModel
+@{
+    ViewData["Title"] = "Upload Status";
+    var hasInProgressOperation = Model.Uploads.Any(u => u.ValidationStatus == "InProgress" || u.MergeStatus == "InProgress");
+    var hasActiveImports = Model.Uploads.Any(u => u.Status is "Processing" or "Importing");
+}
+
+@section Styles {
+    <style>
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        @@keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-list-check"></i> All Uploads
+</h1>
+
+@if (Model.Uploads.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No uploads yet.
+        <a asp-controller="Upload" asp-action="Index">Upload a file</a> to get started.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Size</th>
+                    <th>Uploaded By</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Uploaded</th>
+                    <th>Completed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var upload in Model.Uploads)
+                {
+                    var isMerged = upload.MergeStatus is "Merged" or "PartiallyMerged";
+                    var isValidationFailed = upload.ValidationStatus == "Failed";
+                    var isValidationPassed = upload.ValidationStatus == "Passed";
+                    var isMergeFailed = upload.MergeStatus == "Failed";
+                    var isValidating = upload.ValidationStatus == "InProgress";
+                    var isMerging = upload.MergeStatus == "InProgress";
+
+                    // Determine the last action and its status for display
+                    string lastAction;
+                    string lastActionClass;
+                    string lastActionIcon;
+
+                    if (isMerging)
+                    {
+                        lastAction = "Merging...";
+                        lastActionClass = "text-primary";
+                        lastActionIcon = "bi-arrow-repeat spin";
+                    }
+                    else if (isValidating)
+                    {
+                        lastAction = "Validating...";
+                        lastActionClass = "text-primary";
+                        lastActionIcon = "bi-arrow-repeat spin";
+                    }
+                    else if (isMerged)
+                    {
+                        lastAction = "Merged";
+                        lastActionClass = "text-success";
+                        lastActionIcon = "bi-check-circle-fill";
+                    }
+                    else if (isMergeFailed)
+                    {
+                        lastAction = "Merge Failed";
+                        lastActionClass = "text-danger";
+                        lastActionIcon = "bi-x-circle-fill";
+                    }
+                    else if (isValidationPassed)
+                    {
+                        lastAction = "Validated";
+                        lastActionClass = "text-info";
+                        lastActionIcon = "bi-check2-square";
+                    }
+                    else if (isValidationFailed)
+                    {
+                        lastAction = "Validation Failed";
+                        lastActionClass = "text-danger";
+                        lastActionIcon = "bi-x-circle";
+                    }
+                    else if (upload.Status == "Completed")
+                    {
+                        lastAction = "Import Complete";
+                        lastActionClass = "text-success";
+                        lastActionIcon = "bi-check-circle";
+                    }
+                    else if (upload.Status == "Importing")
+                    {
+                        lastAction = "Importing";
+                        lastActionClass = "text-primary";
+                        lastActionIcon = "bi-arrow-repeat";
+                    }
+                    else if (upload.Status == "Processing")
+                    {
+                        lastAction = "Processing";
+                        lastActionClass = "text-info";
+                        lastActionIcon = "bi-gear";
+                    }
+                    else if (upload.Status == "Pending")
+                    {
+                        lastAction = "Pending";
+                        lastActionClass = "text-warning";
+                        lastActionIcon = "bi-clock";
+                    }
+                    else if (upload.Status == "Failed")
+                    {
+                        lastAction = "Failed";
+                        lastActionClass = "text-danger";
+                        lastActionIcon = "bi-x-circle-fill";
+                    }
+                    else
+                    {
+                        lastAction = upload.Status;
+                        lastActionClass = "text-muted";
+                        lastActionIcon = "bi-hourglass";
+                    }
+
+                    <tr>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@upload.UploadId">
+                                @upload.OriginalFilename
+                            </a>
+                        </td>
+                        <td>@((upload.FileSizeBytes / 1024.0 / 1024.0).ToString("N1")) MB</td>
+                        <td><small>@upload.UploadedBy</small></td>
+                        <td>
+                            @{
+                                var typeDisplay = upload.UploadType switch
+                                {
+                                    "ADInventory" => "AD Inventory",
+                                    "NTFSPermissions" => "NTFS Perms",
+                                    _ => upload.UploadType ?? "Unknown"
+                                };
+                                var typeBadgeClass = upload.UploadType switch
+                                {
+                                    "ADInventory" => "bg-info",
+                                    "NTFSPermissions" => "bg-primary",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @typeBadgeClass">@typeDisplay</span>
+                        </td>
+                        <td class="@lastActionClass">
+                            <i class="bi @lastActionIcon"></i> @lastAction
+                            @if (!string.IsNullOrEmpty(upload.CurrentPhase) && upload.Status is "Importing" or "Processing")
+                            {
+                                <br /><small data-upload-phase="@upload.UploadId">@upload.CurrentPhase</small>
+                            }
+                        </td>
+                        <td>
+                            @if (upload.ImportProgress.HasValue && upload.Status is "Importing" or "Processing")
+                            {
+                                <div class="progress" style="height: 20px; min-width: 100px;" data-upload-id="@upload.UploadId">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         style="width: @upload.ImportProgress%">
+                                        @upload.ImportProgress%
+                                    </div>
+                                </div>
+                            }
+                            else if (upload.Status == "Completed")
+                            {
+                                <span class="text-success"><i class="bi bi-check-circle"></i> 100%</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td><span data-utc="@upload.UploadedAt.ToString("o")" data-format="short">@upload.UploadedAt.ToString("g")</span></td>
+                        <td>
+                            @if (upload.CompletedAt.HasValue)
+                            {
+                                <span data-utc="@upload.CompletedAt.Value.ToString("o")" data-format="short">@upload.CompletedAt.Value.ToString("g")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            @if (upload.Status is "Pending" or "Processing" or "Queued" or "Uploading" or "Importing")
+                            {
+                                <form asp-controller="Upload" asp-action="Cancel" asp-route-id="@upload.UploadId"
+                                      method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </form>
+                            }
+                            else if (upload.Status == "Completed")
+                            {
+                                @if (isValidating || isMerging)
+                                {
+                                    <span class="text-muted"><i class="bi bi-hourglass-split"></i> In progress...</span>
+                                }
+                                else
+                                {
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        @if (!isMerged)
+                                        {
+                                            @if (!isValidationFailed)
+                                            {
+                                                <form asp-controller="Status" asp-action="ValidateAndMerge" asp-route-id="@upload.UploadId"
+                                                      method="post" style="display: inline;">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-primary" title="Validate & Merge">
+                                                        <i class="bi bi-play-fill"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            <form asp-controller="Status" asp-action="Validate" asp-route-id="@upload.UploadId"
+                                                  method="post" style="display: inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="@(isValidationFailed ? "Re-validate" : "Validate only")">
+                                                    <i class="bi bi-check2-square"></i>
+                                                </button>
+                                            </form>
+                                            @if (!isValidationFailed)
+                                            {
+                                                <form asp-controller="Status" asp-action="Merge" asp-route-id="@upload.UploadId"
+                                                      method="post" style="display: inline;">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Merge only">
+                                                        <i class="bi bi-box-arrow-in-right"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        }
+                                        <form asp-controller="Status" asp-action="Delete" asp-route-id="@upload.UploadId"
+                                              method="post" style="display: inline;"
+                                              onsubmit="return confirm('Are you sure you want to delete this upload?@(isMerged ? " The merged data in fsapp will be kept." : "")');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete upload">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @section Scripts {
+        <script>
+            // Prevent double-clicks on action buttons
+            document.querySelectorAll('form[method="post"] button[type="submit"]').forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    if (button.disabled) {
+                        e.preventDefault();
+                        return;
+                    }
+                    // Disable button and show loading state after a short delay
+                    // (allows the form to submit first)
+                    setTimeout(function() {
+                        button.disabled = true;
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+                    }, 100);
+                });
+            });
+
+            @if (hasInProgressOperation)
+            {
+                <text>
+                // Auto-refresh when validation/merge is in progress
+                (function() {
+                    const REFRESH_INTERVAL = 5000; // 5 seconds
+                    setTimeout(function() {
+                        location.reload();
+                    }, REFRESH_INTERVAL);
+                })();
+                </text>
+            }
+
+            @if (hasActiveImports)
+            {
+                <text>
+                // SignalR live updates for active imports
+                (function() {
+                    const activeUploads = [@Html.Raw(string.Join(",", Model.Uploads.Where(u => u.Status is "Processing" or "Importing").Select(u => $"'{u.UploadId}'")))];
+
+                    if (activeUploads.length === 0) return;
+
+                    const connection = new signalR.HubConnectionBuilder()
+                        .withUrl("/hubs/upload")
+                        .withAutomaticReconnect()
+                        .build();
+
+                    connection.on("ProgressUpdate", function(data) {
+                        // Find the progress bar for this upload
+                        const progressContainer = document.querySelector(`[data-upload-id="${data.uploadId}"]`);
+                        if (progressContainer) {
+                            const progressBar = progressContainer.querySelector('.progress-bar');
+                            const progressText = progressContainer.querySelector('.progress-text');
+                            if (progressBar) {
+                                progressBar.style.width = data.percent + '%';
+                                progressBar.textContent = data.percent + '%';
+                            }
+                        }
+
+                        // Update phase display
+                        const phaseEl = document.querySelector(`[data-upload-phase="${data.uploadId}"]`);
+                        if (phaseEl && data.phase) {
+                            phaseEl.textContent = data.phase;
+                        }
+
+                        // Reload page when complete or failed
+                        if (data.phase === 'Complete' || data.phase === 'Failed' || data.phase === 'Cancelled') {
+                            setTimeout(function() { location.reload(); }, 500);
+                        }
+                    });
+
+                    connection.start()
+                        .then(function() {
+                            console.log("SignalR connected for status page");
+                            // Subscribe to all active uploads
+                            activeUploads.forEach(function(uploadId) {
+                                connection.invoke("SubscribeToUpload", uploadId)
+                                    .catch(function(err) { console.error("Failed to subscribe:", err); });
+                            });
+                        })
+                        .catch(function(err) {
+                            console.error("SignalR connection failed:", err);
+                        });
+                })();
+                </text>
+            }
+        </script>
+    }
+}

@@ -1,0 +1,191 @@
+@using CLAWS.Data.Entities
+@model List<ApiKey>
+@{
+    ViewData["Title"] = "My API Keys";
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-key"></i> My API Keys
+</h1>
+
+@if (TempData["NewApiKey"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <h5><i class="bi bi-check-circle"></i> API Key Created Successfully</h5>
+        <p>Description: <strong>@TempData["NewApiKeyDescription"]</strong></p>
+        <p class="mb-2">Your new API key:</p>
+        <div class="input-group mb-2">
+            <input type="text" class="form-control font-monospace" id="newApiKey" value="@TempData["NewApiKey"]" readonly>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()">
+                <i class="bi bi-clipboard"></i> Copy
+            </button>
+        </div>
+        <p class="text-danger mb-0">
+            <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> Copy this key now. It will not be shown again.
+        </p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-list"></i> Your API Keys
+            </div>
+            <div class="card-body">
+                @if (Model.Count == 0)
+                {
+                    <p class="text-muted">You haven't created any API keys yet.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Key Prefix</th>
+                                    <th>Description</th>
+                                    <th>Created</th>
+                                    <th>Last Used</th>
+                                    <th>Expires</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var key in Model.OrderByDescending(k => k.CreatedAt))
+                                {
+                                    var isExpired = key.ExpiresAt.HasValue && key.ExpiresAt.Value < DateTime.UtcNow;
+                                    <tr class="@(!key.IsEnabled || isExpired ? "table-secondary" : "")">
+                                        <td><code>@key.KeyPrefix...</code></td>
+                                        <td>@key.Description</td>
+                                        <td>
+                                            <small><span data-utc="@key.CreatedAt.ToString("o")" data-format="short">@key.CreatedAt.ToString("g")</span></small>
+                                        </td>
+                                        <td>
+                                            @if (key.LastUsedAt.HasValue)
+                                            {
+                                                <small><span data-utc="@key.LastUsedAt.Value.ToString("o")" data-format="short">@key.LastUsedAt.Value.ToString("g")</span></small>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-muted">Never</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (key.ExpiresAt.HasValue)
+                                            {
+                                                <small class="@(isExpired ? "text-danger" : "")"><span data-utc="@key.ExpiresAt.Value.ToString("o")" data-format="short">@key.ExpiresAt.Value.ToString("g")</span></small>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-muted">Never</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!key.IsEnabled)
+                                            {
+                                                <span class="badge bg-danger">Revoked</span>
+                                            }
+                                            else if (isExpired)
+                                            {
+                                                <span class="badge bg-warning">Expired</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (key.IsEnabled && !isExpired)
+                                            {
+                                                <form asp-action="RevokeApiKey" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Are you sure you want to revoke this API key? This action cannot be undone.');">
+                                                    <input type="hidden" name="id" value="@key.ApiKeyId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-x-circle"></i> Revoke
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <form asp-action="DeleteApiKey" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Are you sure you want to permanently delete this API key?');">
+                                                    <input type="hidden" name="id" value="@key.ApiKeyId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-plus-circle"></i> Generate New API Key
+            </div>
+            <div class="card-body">
+                <form asp-action="GenerateApiKey" method="post">
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description"
+                               required placeholder="e.g., My Upload Script" maxlength="500">
+                        <div class="form-text">A descriptive name to identify this key.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expiresAt" class="form-label">Expiration Date (Optional)</label>
+                        <input type="datetime-local" class="form-control" id="expiresAt" name="expiresAt">
+                        <div class="form-text">Leave blank for a non-expiring key.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-key"></i> Generate API Key
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Usage
+            </div>
+            <div class="card-body">
+                <p class="mb-2">To use an API key, include it in your HTTP request headers:</p>
+                <pre class="bg-light p-2 rounded"><code>X-API-Key: your-api-key-here</code></pre>
+                <p class="mb-0 text-muted small">
+                    API keys provide programmatic access to upload files without interactive authentication.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function copyApiKey() {
+            const input = document.getElementById('newApiKey');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value).then(function() {
+                const btn = event.target.closest('button');
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-success');
+                setTimeout(function() {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-secondary');
+                }, 2000);
+            });
+        }
+    </script>
+}

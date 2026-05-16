@@ -1,0 +1,9 @@
+{
+    "SiteName": "CLAWS",
+    "Port": 443,
+    "CertThumbprint": "",
+    "AppPoolIdentity": "",
+    "InstallPath": "C:\\inetpub\\CLAWS",
+    "SqlServer": "",
+    "Database": ""
+}

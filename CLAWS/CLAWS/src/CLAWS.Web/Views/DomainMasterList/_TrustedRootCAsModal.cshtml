@@ -1,0 +1,174 @@
+@model DomainEditViewModel
+@* Trusted Root CAs Modal - displays all trusted root CA certificates for the forest *@
+
+<div class="modal fade" id="trustedRootCAsModal" tabindex="-1" aria-labelledby="trustedRootCAsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trustedRootCAsModalLabel">
+                    <i class="bi bi-shield-check"></i> Trusted Root CAs
+                    <span class="badge bg-secondary ms-2" id="trustedRootCAsCount">0</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Loading state -->
+                <div id="trustedRootCAsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading trusted root CAs...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="trustedRootCAsError" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span id="trustedRootCAsErrorMessage"></span>
+                </div>
+
+                <!-- Empty state -->
+                <div id="trustedRootCAsEmpty" class="text-center text-muted py-4 d-none">
+                    <i class="bi bi-shield-x fs-1 d-block mb-2"></i>
+                    <p>No trusted root CAs found.</p>
+                </div>
+
+                <!-- Data table -->
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0 d-none" id="trustedRootCAsTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th class="ps-3" title="The common name (CN) of the Certificate Authority as stored in Active Directory">CA Name</th>
+                                <th style="width: 120px;" title="The AD container where this CA is published: CertificationAuthorities (trusted root CAs) or AIA (Authority Information Access for chain building)">Container</th>
+                                <th style="width: 100px;" title="The date when this CA certificate expires and will no longer be trusted">Expires</th>
+                                <th class="text-center" style="width: 90px;" title="Current validity status: Valid (>90 days), days remaining (<90 days), or Expired">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trustedRootCAsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <small class="text-muted me-auto">
+                    <i class="bi bi-info-circle"></i> Forest: @Model.PkiSummary?.ForestName
+                </small>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let trustedRootsLoaded = false;
+
+    const modal = document.getElementById('trustedRootCAsModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function () {
+            if (!trustedRootsLoaded) {
+                loadTrustedRootCAs();
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString();
+    }
+
+    window.loadTrustedRootCAs = function() {
+        const domainId = @Model.Domain.DomainID;
+
+        document.getElementById('trustedRootCAsLoading').classList.remove('d-none');
+        document.getElementById('trustedRootCAsTable').classList.add('d-none');
+        document.getElementById('trustedRootCAsError').classList.add('d-none');
+        document.getElementById('trustedRootCAsEmpty').classList.add('d-none');
+
+        fetch(`/DomainMasterList/GetTrustedRootCAs?domainId=${domainId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('trustedRootCAsLoading').classList.add('d-none');
+
+                if (!data.success) {
+                    document.getElementById('trustedRootCAsError').classList.remove('d-none');
+                    document.getElementById('trustedRootCAsErrorMessage').textContent = data.message;
+                    return;
+                }
+
+                document.getElementById('trustedRootCAsCount').textContent = data.totalCount;
+
+                if (data.totalCount === 0) {
+                    document.getElementById('trustedRootCAsEmpty').classList.remove('d-none');
+                    return;
+                }
+
+                const tbody = document.getElementById('trustedRootCAsBody');
+                tbody.innerHTML = '';
+
+                data.trustedRoots.forEach(function(root) {
+                    const row = document.createElement('tr');
+
+                    // Determine expiration status
+                    let statusBadge = '';
+                    let statusClass = 'success';
+                    let statusText = 'Valid';
+
+                    if (root.certificateNotAfter) {
+                        const expDate = new Date(root.certificateNotAfter);
+                        const now = new Date();
+                        const daysRemaining = Math.floor((expDate - now) / (1000 * 60 * 60 * 24));
+
+                        if (daysRemaining < 0) {
+                            statusClass = 'danger';
+                            statusText = 'Expired';
+                        } else if (daysRemaining < 90) {
+                            statusClass = 'warning';
+                            statusText = `${daysRemaining}d`;
+                        } else {
+                            statusText = 'Valid';
+                        }
+                    } else {
+                        statusClass = 'secondary';
+                        statusText = '?';
+                    }
+
+                    // Container type badge
+                    const containerClass = root.containerType === 'CertificationAuthorities' ? 'primary' :
+                                          root.containerType === 'AIA' ? 'info' : 'secondary';
+
+                    row.innerHTML = `
+                        <td class="ps-3">
+                            <strong>${escapeHtml(root.caName)}</strong>
+                            ${root.certificateSubject ? `<br><small class="text-muted text-truncate d-inline-block" style="max-width: 300px;" title="${escapeHtml(root.certificateSubject)}">${escapeHtml(root.certificateSubject)}</small>` : ''}
+                        </td>
+                        <td>
+                            <span class="badge bg-${containerClass}">${escapeHtml(root.containerType || 'Unknown')}</span>
+                        </td>
+                        <td>
+                            ${formatDate(root.certificateNotAfter)}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-${statusClass}">${statusText}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                document.getElementById('trustedRootCAsTable').classList.remove('d-none');
+                trustedRootsLoaded = true;
+            })
+            .catch(error => {
+                document.getElementById('trustedRootCAsLoading').classList.add('d-none');
+                document.getElementById('trustedRootCAsError').classList.remove('d-none');
+                document.getElementById('trustedRootCAsErrorMessage').textContent = 'Failed to load trusted root CAs: ' + error.message;
+            });
+    };
+})();
+</script>

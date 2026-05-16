@@ -1,0 +1,855 @@
+@model UploadViewModel
+@{
+    ViewData["Title"] = "Upload";
+}
+
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <h1 class="mb-4">
+            <i class="bi bi-cloud-upload"></i> Upload Database
+        </h1>
+
+        @if (!Model.IsDbConfigured)
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-database-x"></i>
+                <strong>Database Not Configured</strong><br />
+                Upload functionality is disabled. Please <a asp-controller="Admin" asp-action="Configuration">configure the SQL Server connection</a> first.
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="fileInput" class="form-label">Select ZIP File</label>
+                            <input type="file" class="form-control" id="fileInput" name="file" accept=".zip" required />
+                            <div class="form-text">
+                                Maximum file size: @Model.MaxFileSizeMB.ToString("N0") MB. Only ZIP files containing a single SQLite database are accepted.
+                            </div>
+                        </div>
+
+                        <!-- Auto-Processing Override -->
+                        <div class="mb-3">
+                            <a class="text-decoration-none" data-bs-toggle="collapse" href="#advancedOptions" role="button" aria-expanded="false">
+                                <i class="bi bi-chevron-down" id="advancedIcon"></i> Advanced Options
+                            </a>
+                            <div class="collapse mt-2" id="advancedOptions">
+                                <div class="card card-body bg-light">
+                                    <label for="autoProcessingOverride" class="form-label">Auto-Processing Override</label>
+                                    <select class="form-select" id="autoProcessingOverride" name="autoProcessingOverride">
+                                        <option value="" selected>Use Default Settings</option>
+                                        <option value="ValidateOnly">Validate Only (skip merge)</option>
+                                        <option value="ValidateAndMerge">Validate and Merge</option>
+                                        <option value="Manual">Manual (no auto-processing)</option>
+                                    </select>
+                                    <div class="form-text">
+                                        Override the global auto-processing settings for this upload only.
+                                        @if (Model.EnableAutomaticValidation || Model.EnableAutomaticMerge)
+                                        {
+                                            <br />
+                                            <span class="text-info">
+                                                <i class="bi bi-info-circle"></i>
+                                                Current defaults:
+                                                @if (Model.EnableAutomaticMerge)
+                                                {
+                                                    <span>Validate and Merge</span>
+                                                }
+                                                else if (Model.EnableAutomaticValidation)
+                                                {
+                                                    <span>Validate Only</span>
+                                                }
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <br />
+                                            <span class="text-muted">
+                                                <i class="bi bi-info-circle"></i>
+                                                Current defaults: Manual processing
+                                            </span>
+                                        }
+                                    </div>
+
+                                    <hr class="my-3" />
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="verifyHash" name="verifyHash">
+                                        <label class="form-check-label" for="verifyHash">
+                                            Verify file integrity (SHA-256)
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="bi bi-shield-check"></i>
+                                        Computes a SHA-256 hash before upload and verifies it after assembly on the server.
+                                        This ensures the file was not corrupted during transfer.
+                                        <span class="text-warning" id="hashTimeWarning" style="display: none;">
+                                            <br /><i class="bi bi-clock"></i> Note: Hash calculation may take a while for large files.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100" id="uploadBtn">
+                            <i class="bi bi-upload"></i> Upload
+                        </button>
+                    </form>
+
+                    <div id="uploadProgress" class="upload-progress mt-4">
+                        <h5 id="progressStatus">Uploading...</h5>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">
+                                <span id="progressPercent">0%</span>
+                            </div>
+                        </div>
+                        <p id="progressMessage" class="text-muted small"></p>
+                        <p id="uploadSpeed" class="text-muted small" style="display: none;">
+                            <i class="bi bi-arrow-up"></i> <span id="speedValue">--</span> &bull; <span id="etaValue">Calculating...</span>
+                        </p>
+                    </div>
+
+                    <div id="uploadResult" class="mt-4" style="display: none;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="bi bi-info-circle"></i> Requirements
+                </div>
+                <div class="card-body">
+                    <h6>ZIP File Requirements:</h6>
+                    <ul>
+                        <li>Must contain exactly one file (no folders)</li>
+                        <li>The file must be a valid SQLite database</li>
+                        <li>Database must have the required schema version</li>
+                        <li>Maximum compressed size: @Model.MaxFileSizeMB.ToString("N0") MB</li>
+                    </ul>
+                    <h6>Database Requirements:</h6>
+                    <ul>
+                        <li>Must be created by CollectNTFSPerms</li>
+                        <li>Must pass integrity checks</li>
+                        <li>All collections must meet minimum version requirements</li>
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<!-- js-sha256 for incremental file hashing (supports large files without loading entire file into memory) -->
+<script src="https://cdn.jsdelivr.net/npm/js-sha256@0.11.0/src/sha256.min.js"
+        integrity="sha384-QjbMdgv/hWELlDRbhj6tXsKlzXhrlrSIGNqgdQVvxYQpo+vA+4jOWramMq56bPSg"
+        crossorigin="anonymous"></script>
+<script>
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressStatus = document.getElementById('progressStatus');
+    const progressMessage = document.getElementById('progressMessage');
+    const uploadResult = document.getElementById('uploadResult');
+    const uploadSpeedEl = document.getElementById('uploadSpeed');
+    const speedValueEl = document.getElementById('speedValue');
+    const etaValueEl = document.getElementById('etaValue');
+
+    let connection = null;
+    let currentUploadId = null;
+
+    // Chunked upload configuration (loaded from server)
+    let chunkedConfig = {
+        enabled: false,
+        chunkSizeBytes: 50 * 1024 * 1024,
+        chunkedThresholdBytes: 500 * 1024 * 1024,
+        maxConcurrentChunksPerUpload: 3,
+        maxChunkRetries: 3,
+        sessionExpirationHours: 6,
+        expirationWarningMinutes: 30
+    };
+
+    // Chunked upload state
+    let chunkedUploadState = null;
+    let uploadCancelled = false;
+    let expirationMonitor = null;
+
+    // Load chunked upload settings on page load
+    async function loadChunkedSettings() {
+        try {
+            const response = await fetch('/Upload/ChunkedSettings');
+            if (response.ok) {
+                chunkedConfig = await response.json();
+                console.log('Chunked upload settings loaded:', chunkedConfig);
+            }
+        } catch (err) {
+            console.warn('Failed to load chunked settings:', err);
+        }
+    }
+    loadChunkedSettings();
+
+    // Show hash time warning for large files
+    fileInput.addEventListener('change', function() {
+        const hashWarning = document.getElementById('hashTimeWarning');
+        if (hashWarning && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            // Show warning for files > 1GB
+            hashWarning.style.display = file.size > 1024 * 1024 * 1024 ? 'inline' : 'none';
+        }
+    });
+
+    // Rolling Window Speed Calculator
+    class SpeedCalculator {
+        constructor(windowSizeMs = 5000, minSamplesForDisplay = 3) {
+            this.windowSizeMs = windowSizeMs;
+            this.minSamplesForDisplay = minSamplesForDisplay;
+            this.samples = [];
+            this.totalBytes = 0;
+        }
+
+        reset(totalBytes) {
+            this.samples = [];
+            this.totalBytes = totalBytes;
+        }
+
+        addSample(bytesLoaded) {
+            const now = Date.now();
+            this.samples.push({ bytes: bytesLoaded, time: now });
+
+            // Remove samples outside the window
+            const cutoff = now - this.windowSizeMs;
+            while (this.samples.length > 1 && this.samples[0].time < cutoff) {
+                this.samples.shift();
+            }
+        }
+
+        getSpeed() {
+            if (this.samples.length < this.minSamplesForDisplay) {
+                return null; // Not enough samples yet
+            }
+
+            const first = this.samples[0];
+            const last = this.samples[this.samples.length - 1];
+            const bytesInWindow = last.bytes - first.bytes;
+            const timeInWindow = (last.time - first.time) / 1000; // seconds
+
+            if (timeInWindow <= 0) {
+                return null;
+            }
+
+            return bytesInWindow / timeInWindow; // bytes per second
+        }
+
+        getEta(bytesLoaded) {
+            const speed = this.getSpeed();
+            if (!speed || speed <= 0) {
+                return null;
+            }
+
+            const remaining = this.totalBytes - bytesLoaded;
+            if (remaining <= 0) {
+                return 0;
+            }
+
+            return remaining / speed; // seconds remaining
+        }
+
+        formatSpeed(bytesPerSecond) {
+            if (bytesPerSecond === null) {
+                return 'Calculating...';
+            }
+
+            if (bytesPerSecond >= 1024 * 1024 * 1024) {
+                return (bytesPerSecond / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s';
+            } else if (bytesPerSecond >= 1024 * 1024) {
+                return (bytesPerSecond / (1024 * 1024)).toFixed(1) + ' MB/s';
+            } else if (bytesPerSecond >= 1024) {
+                return (bytesPerSecond / 1024).toFixed(1) + ' KB/s';
+            } else {
+                return Math.round(bytesPerSecond) + ' B/s';
+            }
+        }
+
+        formatEta(seconds) {
+            if (seconds === null) {
+                return 'Calculating...';
+            }
+
+            if (seconds <= 0) {
+                return 'Almost done...';
+            }
+
+            if (seconds < 60) {
+                return `~${Math.ceil(seconds)} sec remaining`;
+            } else if (seconds < 3600) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.ceil(seconds % 60);
+                return `~${mins} min ${secs} sec remaining`;
+            } else {
+                const hours = Math.floor(seconds / 3600);
+                const mins = Math.ceil((seconds % 3600) / 60);
+                return `~${hours} hr ${mins} min remaining`;
+            }
+        }
+    }
+
+    const speedCalculator = new SpeedCalculator();
+
+    // Initialize SignalR connection
+    async function initSignalR() {
+        connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/upload")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("ProgressUpdate", function(data) {
+            if (data.uploadId === currentUploadId) {
+                updateProgress(data.phase, data.percent, data.message);
+            }
+        });
+
+        try {
+            await connection.start();
+            console.log("SignalR connected");
+        } catch (err) {
+            console.error("SignalR connection failed:", err);
+        }
+    }
+
+    function updateProgress(phase, percent, message) {
+        progressBar.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+        progressStatus.textContent = phase;
+        progressMessage.textContent = message;
+
+        if (phase === 'Complete') {
+            progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+            progressBar.classList.add('bg-success');
+            showResult(true, 'Import completed successfully!');
+        } else if (phase === 'Failed' || phase === 'Cancelled') {
+            progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+            progressBar.classList.add('bg-danger');
+            showResult(false, message);
+        }
+    }
+
+    let redirectCountdown = null;
+
+    function showResult(success, message, uploadId = null) {
+        uploadResult.style.display = 'block';
+        if (success && uploadId) {
+            // Start countdown redirect
+            let seconds = 5;
+            const statusUrl = `/${uploadId}`;
+
+            uploadResult.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> ${message}
+                    <div class="mt-2">
+                        <span id="redirect-countdown">Redirecting to status page in ${seconds} seconds...</span>
+                        <div class="mt-2">
+                            <a href="${statusUrl}" class="btn btn-success btn-sm">Go Now</a>
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="cancelRedirect()">Stay Here</button>
+                        </div>
+                    </div>
+                </div>`;
+
+            const countdownEl = document.getElementById('redirect-countdown');
+            redirectCountdown = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(redirectCountdown);
+                    window.location.href = statusUrl;
+                } else {
+                    countdownEl.textContent = `Redirecting to status page in ${seconds} seconds...`;
+                }
+            }, 1000);
+        } else if (success) {
+            uploadResult.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> ${message}
+                    <br/>
+                    <a href="/Status" class="btn btn-success btn-sm mt-2">View Status</a>
+                </div>`;
+        } else {
+            uploadResult.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> ${message}
+                </div>`;
+        }
+    }
+
+    function cancelRedirect() {
+        if (redirectCountdown) {
+            clearInterval(redirectCountdown);
+            redirectCountdown = null;
+            document.getElementById('redirect-countdown').textContent = 'Redirect cancelled. You can upload another file.';
+            uploadBtn.disabled = false;
+            fileInput.disabled = false;
+        }
+    }
+
+    // Chunked upload functions
+    class SessionExpirationMonitor {
+        constructor(uploadId, expiresAt) {
+            this.uploadId = uploadId;
+            this.expiresAt = new Date(expiresAt);
+            this.warned30 = false;
+            this.warned10 = false;
+            this.interval = null;
+        }
+
+        start() {
+            this.interval = setInterval(() => this.check(), 60000);
+            this.check();
+        }
+
+        stop() {
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
+            }
+        }
+
+        check() {
+            const now = new Date();
+            const minutesRemaining = (this.expiresAt - now) / (1000 * 60);
+
+            if (minutesRemaining <= 0) {
+                this.stop();
+                this.showExpiredError();
+                return;
+            }
+
+            if (minutesRemaining <= 10 && !this.warned10) {
+                this.warned10 = true;
+                this.showWarning(10, 'danger');
+            } else if (minutesRemaining <= chunkedConfig.expirationWarningMinutes && !this.warned30) {
+                this.warned30 = true;
+                this.showWarning(chunkedConfig.expirationWarningMinutes, 'warning');
+            }
+        }
+
+        showWarning(minutes, severity) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${severity} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <strong>Upload Session Expiring!</strong> Your upload session expires in ${Math.round(minutes)} minutes.
+                Please complete the upload or it will be cancelled.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            uploadProgress.insertAdjacentElement('afterend', alertDiv);
+        }
+
+        showExpiredError() {
+            uploadCancelled = true;
+            updateProgress('Session Expired', 0, 'Your upload session has expired. Please start a new upload.');
+            showResult(false, 'Upload session expired. Please start a new upload.');
+            uploadBtn.disabled = false;
+            fileInput.disabled = false;
+        }
+    }
+
+    async function computeFileHash(file) {
+        // Use js-sha256 library for incremental hashing (doesn't load entire file into memory)
+        return new Promise((resolve, reject) => {
+            if (typeof sha256 === 'undefined' || typeof sha256.create !== 'function') {
+                reject(new Error('SHA-256 library not loaded'));
+                return;
+            }
+
+            const chunkSize = 2 * 1024 * 1024; // 2MB chunks for hashing
+            let offset = 0;
+            const reader = new FileReader();
+            const hash = sha256.create(); // Create incremental hasher
+
+            reader.onload = (e) => {
+                // Update hash incrementally with each chunk (no memory accumulation)
+                hash.update(new Uint8Array(e.target.result));
+                offset += e.target.result.byteLength;
+
+                const percent = Math.min(100, Math.round((offset / file.size) * 100));
+                updateProgress('Computing hash...', percent, `Calculating SHA-256: ${percent}%`);
+
+                if (offset < file.size) {
+                    readNextChunk();
+                } else {
+                    // Finalize hash - no need to combine chunks in memory
+                    const hashHex = hash.hex();
+                    resolve('sha256:' + hashHex);
+                }
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read file for hashing'));
+
+            function readNextChunk() {
+                const end = Math.min(offset + chunkSize, file.size);
+                const slice = file.slice(offset, end);
+                reader.readAsArrayBuffer(slice);
+            }
+
+            readNextChunk();
+        });
+    }
+
+    async function uploadChunked(file) {
+        uploadCancelled = false;
+        const totalChunks = Math.ceil(file.size / chunkedConfig.chunkSizeBytes);
+        const autoProcessingOverride = document.getElementById('autoProcessingOverride').value;
+        const verifyHashCheckbox = document.getElementById('verifyHash');
+        const shouldVerifyHash = verifyHashCheckbox && verifyHashCheckbox.checked;
+
+        let contentHash = null;
+
+        // Step 0: Compute hash if requested
+        if (shouldVerifyHash) {
+            try {
+                updateProgress('Computing hash...', 0, 'Calculating SHA-256 hash (this may take a while for large files)...');
+                contentHash = await computeFileHash(file);
+                console.log('Computed hash:', contentHash);
+            } catch (err) {
+                console.warn('Hash computation failed:', err);
+                // Continue without hash verification
+            }
+        }
+
+        updateProgress('Initializing...', 0, 'Preparing chunked upload...');
+
+        // Step 1: Initialize session
+        const initResponse = await fetch('/Upload/InitChunked', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fileName: file.name,
+                fileSize: file.size,
+                totalChunks: totalChunks,
+                chunkSize: chunkedConfig.chunkSizeBytes,
+                contentHash: contentHash,
+                autoProcessingOverride: autoProcessingOverride || null
+            })
+        });
+
+        const initResult = await initResponse.json();
+        if (!initResult.success) {
+            throw new Error(initResult.error || 'Failed to initialize upload');
+        }
+
+        chunkedUploadState = {
+            uploadId: initResult.uploadId,
+            file: file,
+            totalChunks: totalChunks,
+            completedChunks: 0,
+            startTime: Date.now(),
+            contentHash: contentHash
+        };
+
+        // Start expiration monitor
+        if (expirationMonitor) expirationMonitor.stop();
+        expirationMonitor = new SessionExpirationMonitor(initResult.uploadId, initResult.expiresAt);
+        expirationMonitor.start();
+
+        updateProgress('Uploading...', 0, `Uploading ${formatBytes(file.size)} in ${totalChunks} chunks...`);
+
+        // Step 2: Upload chunks with concurrency control
+        await uploadChunksWithConcurrency(file, initResult.uploadId, totalChunks);
+
+        if (uploadCancelled) {
+            throw new Error('Upload cancelled');
+        }
+
+        // Step 3: Finalize
+        const verifyOnServer = chunkedUploadState.contentHash != null;
+        updateProgress('Assembling...', 100, verifyOnServer ? 'Assembling and verifying file on server...' : 'Assembling file on server...');
+
+        const finalizeResponse = await fetch('/Upload/FinalizeChunked', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                uploadId: initResult.uploadId,
+                verifyHash: verifyOnServer
+            })
+        });
+
+        const finalizeResult = await finalizeResponse.json();
+
+        if (expirationMonitor) {
+            expirationMonitor.stop();
+            expirationMonitor = null;
+        }
+
+        if (!finalizeResult.success) {
+            throw new Error(finalizeResult.error || 'Failed to finalize upload');
+        }
+
+        return finalizeResult;
+    }
+
+    async function uploadChunksWithConcurrency(file, uploadId, totalChunks) {
+        const queue = Array.from({ length: totalChunks }, (_, i) => i);
+        const completed = new Set();
+        const failed = new Map();
+        const inProgress = new Set();
+
+        // Reset speed calculator
+        speedCalculator.reset(file.size);
+        uploadSpeedEl.style.display = 'block';
+
+        return new Promise((resolve, reject) => {
+            const processQueue = () => {
+                if (uploadCancelled) {
+                    reject(new Error('Cancelled'));
+                    return;
+                }
+
+                // Start new uploads up to concurrency limit
+                while (queue.length > 0 && inProgress.size < chunkedConfig.maxConcurrentChunksPerUpload) {
+                    const chunkIndex = queue.shift();
+                    inProgress.add(chunkIndex);
+
+                    uploadSingleChunk(file, uploadId, chunkIndex)
+                        .then(result => {
+                            inProgress.delete(chunkIndex);
+                            completed.add(chunkIndex);
+                            chunkedUploadState.completedChunks = completed.size;
+
+                            const bytesUploaded = completed.size * chunkedConfig.chunkSizeBytes;
+                            speedCalculator.addSample(Math.min(bytesUploaded, file.size));
+
+                            const percent = Math.round((completed.size / totalChunks) * 100);
+                            const speed = speedCalculator.getSpeed();
+                            const eta = speedCalculator.getEta(Math.min(bytesUploaded, file.size));
+
+                            speedValueEl.textContent = speedCalculator.formatSpeed(speed);
+                            etaValueEl.textContent = speedCalculator.formatEta(eta);
+
+                            updateProgress('Uploading...', percent,
+                                `${completed.size}/${totalChunks} chunks (${formatBytes(bytesUploaded)} / ${formatBytes(file.size)})`);
+
+                            if (completed.size === totalChunks) {
+                                uploadSpeedEl.style.display = 'none';
+                                resolve();
+                            } else {
+                                processQueue();
+                            }
+                        })
+                        .catch(error => {
+                            inProgress.delete(chunkIndex);
+                            const attempts = (failed.get(chunkIndex) || 0) + 1;
+                            failed.set(chunkIndex, attempts);
+
+                            if (attempts < chunkedConfig.maxChunkRetries) {
+                                console.warn(`Chunk ${chunkIndex} failed (attempt ${attempts}), retrying...`);
+                                setTimeout(() => {
+                                    queue.push(chunkIndex);
+                                    processQueue();
+                                }, 2000 * attempts);
+                            } else {
+                                uploadSpeedEl.style.display = 'none';
+                                reject(new Error(`Chunk ${chunkIndex} failed after ${chunkedConfig.maxChunkRetries} attempts: ${error.message}`));
+                            }
+                        });
+                }
+            };
+
+            processQueue();
+        });
+    }
+
+    async function uploadSingleChunk(file, uploadId, chunkIndex) {
+        const start = chunkIndex * chunkedConfig.chunkSizeBytes;
+        const end = Math.min(start + chunkedConfig.chunkSizeBytes, file.size);
+        const chunk = file.slice(start, end);
+
+        const formData = new FormData();
+        formData.append('uploadId', uploadId);
+        formData.append('chunkIndex', chunkIndex.toString());
+        formData.append('chunk', chunk);
+
+        const response = await fetch('/Upload/UploadChunk', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+
+        return result;
+    }
+
+    async function cancelChunkedUpload() {
+        uploadCancelled = true;
+        if (expirationMonitor) {
+            expirationMonitor.stop();
+            expirationMonitor = null;
+        }
+        if (chunkedUploadState && chunkedUploadState.uploadId) {
+            try {
+                await fetch(`/Upload/ChunkedUpload/${chunkedUploadState.uploadId}`, { method: 'DELETE' });
+            } catch (err) {
+                console.warn('Failed to cancel upload on server:', err);
+            }
+        }
+    }
+
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+
+    uploadForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please select a file');
+            return;
+        }
+
+        if (!file.name.endsWith('.zip')) {
+            alert('Only ZIP files are accepted');
+            return;
+        }
+
+        const maxSize = @Model.MaxFileSizeBytes;
+        if (file.size > maxSize) {
+            alert('File size exceeds maximum allowed');
+            return;
+        }
+
+        // Initialize SignalR if not connected
+        if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+            await initSignalR();
+        }
+
+        uploadBtn.disabled = true;
+        fileInput.disabled = true;
+        uploadProgress.classList.add('active');
+        uploadResult.style.display = 'none';
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+        progressBar.style.width = '0%';
+
+        // Decide whether to use chunked upload
+        const useChunked = chunkedConfig.enabled && file.size > chunkedConfig.chunkedThresholdBytes;
+
+        if (useChunked) {
+            // Chunked upload for large files
+            try {
+                const result = await uploadChunked(file);
+                currentUploadId = result.uploadId;
+
+                if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                    await connection.invoke("SubscribeToUpload", currentUploadId);
+                }
+
+                const queueMsg = `Upload complete! Queued for processing (position ${result.queuePosition || 1}).`;
+                updateProgress('Pending', 100, queueMsg);
+                showResult(true, queueMsg, currentUploadId);
+            } catch (err) {
+                if (err.message === 'Cancelled' || err.message === 'Upload cancelled') {
+                    updateProgress('Cancelled', 0, 'Upload was cancelled');
+                    showResult(false, 'Upload was cancelled');
+                } else {
+                    updateProgress('Failed', 0, err.message);
+                    showResult(false, err.message);
+                }
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+            }
+            return;
+        }
+
+        // Standard upload for smaller files
+        const formData = new FormData();
+
+        // Include auto-processing override if specified - MUST be appended BEFORE file
+        // because the server reads form fields in order and stops after processing the file
+        const autoProcessingOverride = document.getElementById('autoProcessingOverride').value;
+        if (autoProcessingOverride) {
+            formData.append('autoProcessingOverride', autoProcessingOverride);
+        }
+
+        formData.append('file', file);
+
+        // Reset speed calculator for new upload
+        speedCalculator.reset(file.size);
+        uploadSpeedEl.style.display = 'block';
+        speedValueEl.textContent = 'Calculating...';
+        etaValueEl.textContent = '';
+
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+
+                // Add sample to speed calculator
+                speedCalculator.addSample(e.loaded);
+
+                // Get speed and ETA
+                const speed = speedCalculator.getSpeed();
+                const eta = speedCalculator.getEta(e.loaded);
+
+                // Update speed display
+                speedValueEl.textContent = speedCalculator.formatSpeed(speed);
+                etaValueEl.textContent = speedCalculator.formatEta(eta);
+
+                updateProgress('Uploading...', percent, `${(e.loaded / 1024 / 1024).toFixed(1)} MB / ${(e.total / 1024 / 1024).toFixed(1)} MB`);
+            }
+        });
+
+        xhr.onload = async function() {
+            // Hide speed display when upload phase completes
+            uploadSpeedEl.style.display = 'none';
+
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (xhr.status >= 200 && xhr.status < 300 && response.success) {
+                    currentUploadId = response.uploadId;
+
+                    // Subscribe to updates (for receiving progress if user stays)
+                    if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                        await connection.invoke("SubscribeToUpload", currentUploadId);
+                    }
+
+                    const queueMsg = `Upload complete! Queued for processing (position ${response.queuePosition || 1}).`;
+                    updateProgress('Pending', 100, queueMsg);
+                    showResult(true, queueMsg, currentUploadId);
+                } else {
+                    updateProgress('Failed', 0, response.error || 'Upload failed');
+                    showResult(false, response.error || 'Upload failed');
+                    uploadBtn.disabled = false;
+                    fileInput.disabled = false;
+                }
+            } catch (err) {
+                updateProgress('Failed', 0, 'Error processing response');
+                showResult(false, 'Error processing response');
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+            }
+        };
+
+        xhr.onerror = function() {
+            // Hide speed display on error
+            uploadSpeedEl.style.display = 'none';
+
+            updateProgress('Failed', 0, 'Network error');
+            showResult(false, 'Network error occurred');
+            uploadBtn.disabled = false;
+            fileInput.disabled = false;
+        };
+
+        xhr.open('POST', '/Upload/Upload');
+        xhr.send(formData);
+    });
+</script>
+}

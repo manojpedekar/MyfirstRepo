@@ -1,0 +1,225 @@
+@model DomainEditViewModel
+@* Overview tab - Forest and Domain information *@
+
+<div class="tab-pane fade show active" id="overview-pane" role="tabpanel" aria-labelledby="overview-tab">
+    @if (Model.AdInventory == null || !Model.AdInventory.HasInventory)
+    {
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-exclamation-circle fs-1 mb-2 d-block"></i>
+            <p class="mb-1">No AD inventory data available for this domain.</p>
+            <small>Run a collection to populate this information.</small>
+        </div>
+    }
+    else
+    {
+        <!-- Forest Information Card -->
+        @if (Model.AdInventory.Forest != null)
+        {
+            <div class="card mb-3">
+                <div class="card-header bg-success-subtle py-2">
+                    <i class="bi bi-diagram-3"></i> Forest Information
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="text-nowrap ps-3" style="width: 40%;">Forest Name</th>
+                                <td>@(Model.AdInventory.Forest.ForestName ?? "—")</td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Forest Mode</th>
+                                <td>@(Model.AdInventory.Forest.ForestMode ?? "—")</td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Schema Version</th>
+                                <td>
+                                    @if (Model.AdInventory.Forest.SchemaVersion.HasValue)
+                                    {
+                                        <span>@Model.AdInventory.Forest.SchemaVersion</span>
+                                        <span class="text-muted">(@Model.AdInventory.Forest.SchemaVersionDisplay)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Exchange Schema</th>
+                                <td>
+                                    @if (Model.AdInventory.Forest.ExchangeSchemaVersion.HasValue)
+                                    {
+                                        <span>@Model.AdInventory.Forest.ExchangeSchemaVersion</span>
+                                        <span class="text-muted">(@Model.AdInventory.Forest.ExchangeSchemaVersionDisplay)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Not installed</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Created</th>
+                                <td>
+                                    @if (Model.AdInventory.Forest.WhenCreated.HasValue)
+                                    {
+                                        <span data-utc="@Model.AdInventory.Forest.WhenCreated.Value.ToString("o")" data-format="date">
+                                            @Model.AdInventory.Forest.WhenCreated.Value.ToString("d")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr class="table-group-divider">
+                                <th colspan="2" class="text-muted small ps-3" title="Flexible Single Master Operations">FSMO Roles (Forest-wide)</th>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Schema Master</th>
+                                <td class="text-truncate" style="max-width: 200px;" title="@Model.AdInventory.Forest.SchemaMaster">
+                                    @(Model.AdInventory.Forest.SchemaMaster ?? "—")
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Naming Master</th>
+                                <td class="text-truncate" style="max-width: 200px;" title="@Model.AdInventory.Forest.DomainNamingMaster">
+                                    @(Model.AdInventory.Forest.DomainNamingMaster ?? "—")
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <!-- Domain Information Card -->
+        @if (Model.AdInventory.Domain != null)
+        {
+            <div class="card mb-3">
+                <div class="card-header bg-primary-subtle py-2">
+                    <i class="bi bi-building"></i> Domain Information
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="text-nowrap ps-3" style="width: 40%;">Domain Mode</th>
+                                <td>@(Model.AdInventory.Domain.DomainMode ?? "—")</td>
+                            </tr>
+                            @if (Model.AdInventory.Domain.ParentDomain != null)
+                            {
+                                <tr>
+                                    <th class="text-nowrap ps-3">Parent Domain</th>
+                                    <td>
+                                        @if (Model.AdInventory.Domain.ParentDomain.HasLink)
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@Model.AdInventory.Domain.ParentDomain.DomainId">
+                                                @Model.AdInventory.Domain.ParentDomain.DomainName
+                                                <i class="bi bi-box-arrow-up-right small"></i>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span>@Model.AdInventory.Domain.ParentDomain.DomainName</span>
+                                            <span class="text-muted small" title="Domain not in Master List">(not in DML)</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (Model.AdInventory.Domain.ChildDomains.Count > 0)
+                            {
+                                <tr>
+                                    <th class="text-nowrap ps-3">Child Domains</th>
+                                    <td>
+                                        @for (int i = 0; i < Model.AdInventory.Domain.ChildDomains.Count; i++)
+                                        {
+                                            var child = Model.AdInventory.Domain.ChildDomains[i];
+                                            if (i > 0)
+                                            {
+                                                <text>, </text>
+                                            }
+                                            if (child.HasLink)
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@child.DomainId">@child.DomainName</a>
+                                            }
+                                            else
+                                            {
+                                                <span>@child.DomainName</span>
+                                            }
+                                        }
+                                        @if (Model.AdInventory.Domain.ChildDomains.Any(c => !c.HasLink))
+                                        {
+                                            <br /><small class="text-muted">Domains without links are not in the Domain Master List</small>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            <tr>
+                                <th class="text-nowrap ps-3">DC Count</th>
+                                <td>
+                                    @if (Model.AdInventory.DomainControllers.Count > 0)
+                                    {
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#dcModal">
+                                            @Model.AdInventory.DomainControllers.Count <i class="bi bi-box-arrow-up-right small"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">0</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3">Created</th>
+                                <td>
+                                    @if (Model.AdInventory.Domain.WhenCreated.HasValue)
+                                    {
+                                        <span data-utc="@Model.AdInventory.Domain.WhenCreated.Value.ToString("o")" data-format="date">
+                                            @Model.AdInventory.Domain.WhenCreated.Value.ToString("d")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(Model.Domain.LdapUrl))
+                            {
+                                <tr>
+                                    <th class="text-nowrap ps-3">LDAP Endpoint</th>
+                                    <td class="text-truncate" style="max-width: 200px;" title="@Model.Domain.LdapUrl">
+                                        <code class="small">@Model.Domain.LdapUrl</code>
+                                    </td>
+                                </tr>
+                            }
+                            <tr class="table-group-divider">
+                                <th colspan="2" class="text-muted small ps-3" title="Flexible Single Master Operations">FSMO Roles (Domain-wide)</th>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3" title="Primary Domain Controller Emulator">PDC Emulator</th>
+                                <td class="text-truncate" style="max-width: 200px;" title="@Model.AdInventory.Domain.PDCEmulator">
+                                    @(Model.AdInventory.Domain.PDCEmulator ?? "—")
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3" title="Relative Identifier Master">RID Master</th>
+                                <td class="text-truncate" style="max-width: 200px;" title="@Model.AdInventory.Domain.RIDMaster">
+                                    @(Model.AdInventory.Domain.RIDMaster ?? "—")
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-nowrap ps-3" title="Infrastructure Master">Infra Master</th>
+                                <td class="text-truncate" style="max-width: 200px;" title="@Model.AdInventory.Domain.InfrastructureMaster">
+                                    @(Model.AdInventory.Domain.InfrastructureMaster ?? "—")
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+</div>

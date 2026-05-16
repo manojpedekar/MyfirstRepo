@@ -1,0 +1,2148 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "File Storage Analysis using normalized stats schema (v2) - optimized for large datasets",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 21179,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Combined capacity of all scanned volumes",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (s.TotalUsedBytes + s.TotalFreeBytes) / 1073741824.0 AS TotalGB\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Storage",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Total storage currently in use across all scanned volumes",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange"
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.TotalUsedBytes / 1073741824.0 AS UsedGB\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Used Space",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Overall storage utilization percentage",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      },
+      "id": 12,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 100.0 * s.TotalUsedBytes / NULLIF(s.TotalUsedBytes + s.TotalFreeBytes, 0) AS PctUsed\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Used %",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Total number of files scanned",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 1
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.TotalFiles\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Files",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Large files (>100MB) not modified in 2+ years",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 1
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.StaleFilesBytes / 1073741824.0 AS StaleGB\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Stale Data",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Estimated wasted space from potential duplicate files (same name+size, >10MB)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 15,
+        "y": 1
+      },
+      "id": 15,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.DuplicateCandidatesWastedBytes / 1073741824.0 AS DupWastedGB\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Dup Waste",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Total size of temp/cache files (directories marked as IsTempCache)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 1
+      },
+      "id": 16,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.TempCacheFilesBytes / 1073741824.0 AS TempGB\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Temp/Cache",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Files in OS-managed directories ($Recycle.Bin, System Volume Information, etc.) that Windows controls automatically",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "orange",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 1
+      },
+      "id": 50,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.SystemManagedFilesBytes / 1073741824.0 AS SystemGB\nFROM FileSizes.stats.BatchSummary s\nWHERE s.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "System Managed",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Scan metadata including last access time collection status",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Metric"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 176
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 0,
+        "y": 5
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 'Server' AS Metric, b.ServerName AS Value FROM FileSizes.stats.ScanBatch b WHERE b.BatchId = '${batchid}'\nUNION ALL\nSELECT 'Collected', CONVERT(VARCHAR, b.CollectedAtUtc, 120) FROM FileSizes.stats.ScanBatch b WHERE b.BatchId = '${batchid}'\nUNION ALL\nSELECT 'Tool', b.ToolName + ' v' + ISNULL(b.ToolVersion, '?') FROM FileSizes.stats.ScanBatch b WHERE b.BatchId = '${batchid}'\nUNION ALL\nSELECT 'Collected By', b.CollectedBy FROM FileSizes.stats.ScanBatch b WHERE b.BatchId = '${batchid}'\nUNION ALL\nSELECT 'Duration', CAST(b.DurationSec AS VARCHAR) + ' sec' FROM FileSizes.stats.ScanBatch b WHERE b.BatchId = '${batchid}'\nUNION ALL\nSELECT 'Access Time', CASE WHEN b.AccessTimeCollected = 1 THEN 'Collected' ELSE 'Not Collected (' + ISNULL(b.LastAccessStatus, 'disabled') + ')' END FROM FileSizes.stats.ScanBatch b WHERE b.BatchId = '${batchid}'",
+          "refId": "A"
+        }
+      ],
+      "title": "Scan Info",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Breakdown of storage by volume/drive",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TotalGB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FreeGB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PctUsed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 338
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VolumeName"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 319
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 17,
+        "x": 7,
+        "y": 5
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    v.VolumeName,\n    v.VolumeLabel,\n    v.TotalSizeBytes / 1073741824.0 AS TotalGB,\n    v.FreeSizeBytes / 1073741824.0 AS FreeGB,\n    CASE WHEN v.TotalSizeBytes > 0\n         THEN 100.0 * (v.TotalSizeBytes - v.FreeSizeBytes) / v.TotalSizeBytes\n         ELSE NULL\n    END AS PctUsed,\n    v.FileCount,\n    v.DirectoryCount\nFROM FileSizes.stats.ScanVolume v\nWHERE v.BatchId = '${batchid}'\nORDER BY v.VolumeName",
+          "refId": "A"
+        }
+      ],
+      "title": "Volume Summary",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 101,
+      "panels": [],
+      "title": "Space Analysis",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Top 20 directories by total file size (using pre-aggregated stats)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "id": 20,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.6,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP 20\n    d.DirectoryName AS Folder,\n    d.TotalFileSize / 1073741824.0 AS TotalGB\nFROM FileSizes.stats.Directory d\nWHERE d.BatchId = '${batchid}'\n  AND d.TotalFileSize > 0\nORDER BY d.TotalFileSize DESC",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Top 20 Folders by Size",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Storage by file type using pre-computed extension column",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 14
+      },
+      "id": 21,
+      "options": {
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP 10\n    UPPER(ISNULL(f.Extension, '(no ext)')) AS Extension,\n    SUM(f.FileSize) / 1073741824.0 AS TotalGB\nFROM FileSizes.stats.FileEntry f\nWHERE f.BatchId = '${batchid}'\n  AND f.FileSize IS NOT NULL\nGROUP BY f.Extension\nORDER BY SUM(f.FileSize) DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Space by Extension (Top 10)",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Distribution of storage by file age (based on ModifiedTime)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 14
+      },
+      "id": 22,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.6,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT AgeCategory, TotalBytes / 1073741824.0 AS TotalGB\nFROM FileSizes.stats.vw_FileAgeDistribution\nWHERE BatchId = '${batchid}'\nORDER BY SortOrder",
+          "refId": "A"
+        }
+      ],
+      "title": "File Age Distribution",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Storage usage by extension using pre-computed column",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Extension"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View files with .${__value.text} extension",
+                    "url": "/d/${__dashboard.uid}/${__dashboard}?var-extension=${__value.text}&var-batchid=${batchid}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    ISNULL(f.Extension, '(no ext)') AS Extension,\n    COUNT(*) AS FileCount,\n    SUM(f.FileSize) / 1073741824.0 AS TotalGB,\n    AVG(f.FileSize) / 1048576.0 AS AvgSizeMB,\n    MAX(f.FileSize) / 1073741824.0 AS LargestGB\nFROM FileSizes.stats.FileEntry f\nWHERE f.BatchId = '${batchid}'\n  AND f.FileSize IS NOT NULL\nGROUP BY f.Extension\nORDER BY SUM(f.FileSize) DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "File Type Distribution (click extension to drill down)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Top-level folders using pre-aggregated directory stats",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DirectoryName"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View files in ${__value.text}",
+                    "url": "/d/${__dashboard.uid}/${__dashboard}?var-directoryid=${__data.fields.DirectoryId}&var-batchid=${batchid}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 483
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DirectoryId"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 128
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FileCount"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 142
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 23,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP 50\n    d.DirectoryId,\n    d.DirectoryName,\n    d.FileCount,\n    d.TotalFileSize / 1073741824.0 AS TotalGB\nFROM FileSizes.stats.Directory d\nWHERE d.BatchId = '${batchid}'\nORDER BY d.TotalFileSize DESC",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Top Folders (click to drill down)",
+      "type": "table"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "id": 102,
+      "panels": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "description": "Large files not modified in 2+ years using view for full path",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "FullPath"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 700
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 95
+          },
+          "id": 4,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "12.0.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "mssql",
+                "uid": "${winventory}"
+              },
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT TOP 100\n    v.VolumeName,\n    s.FullPath,\n    s.FileSize / 1048576.0 AS SizeMB,\n    s.ModifiedTime,\n    s.DaysSinceModified\nFROM FileSizes.stats.vw_StaleFiles s\nJOIN FileSizes.stats.ScanVolume v ON v.BatchId = s.BatchId AND v.ScanVolumeId = s.ScanVolumeId\nWHERE s.BatchId = '${batchid}'\nORDER BY s.FileSize DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Stale Files (>100MB, not modified in 2+ years)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "description": "Potential duplicates using pre-computed view",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 105
+          },
+          "id": 6,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "12.0.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "mssql",
+                "uid": "${winventory}"
+              },
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT TOP 100\n    d.FileName,\n    d.FileSize / 1048576.0 AS SizeMB,\n    d.CopyCount,\n    d.WastedBytes / 1073741824.0 AS WastedGB\nFROM FileSizes.stats.vw_DuplicateCandidates d\nWHERE d.BatchId = '${batchid}'\nORDER BY d.WastedBytes DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Duplicate Candidates (same name+size, >10MB)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "description": "Files in directories marked as temp/cache using IsTempCache flag",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "FullPath"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 600
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 105
+          },
+          "id": 24,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "12.0.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "mssql",
+                "uid": "${winventory}"
+              },
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT TOP 100\n    t.FullPath,\n    t.FileName,\n    t.FileSize / 1048576.0 AS SizeMB,\n    t.ModifiedTime\nFROM FileSizes.stats.vw_TempCacheFiles t\nWHERE t.BatchId = '${batchid}'\nORDER BY t.FileSize DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Temp/Cache Files (largest)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "description": "Files in system-managed directories ($Recycle.Bin, System Volume Information, etc.)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "FullPath"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 600
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 113
+          },
+          "id": 51,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true
+          },
+          "pluginVersion": "12.0.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "mssql",
+                "uid": "${winventory}"
+              },
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT TOP 100\n    t.FullPath,\n    t.FileName,\n    t.FileSize / 1048576.0 AS SizeMB,\n    t.ModifiedTime\nFROM FileSizes.stats.vw_SystemManagedFiles t\nWHERE t.BatchId = '${batchid}'\nORDER BY t.FileSize DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "System Managed Files (largest)",
+          "type": "table"
+        }
+      ],
+      "title": "Cleanup Candidates",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "id": 103,
+      "panels": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "description": "Largest files using view for full path",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "locale"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "FullPath"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 1157
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "SizeGB"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 109
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 114
+          },
+          "id": 3,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "12.0.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "mssql",
+                "uid": "${winventory}"
+              },
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT TOP 50\n    v.VolumeName,\n    l.FullPath,\n    l.FileSize / 1073741824.0 AS SizeGB,\n    l.ModifiedTime,\n    l.AccessedTime\nFROM FileSizes.stats.vw_LargestFiles l\nJOIN FileSizes.stats.ScanVolume v ON v.BatchId = l.BatchId AND v.ScanVolumeId = l.ScanVolumeId\nWHERE l.BatchId = '${batchid}'\nORDER BY l.FileSize DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Top 50 Largest Files",
+          "type": "table"
+        }
+      ],
+      "title": "Largest Files",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 104,
+      "panels": [],
+      "title": "Drill-Down Results",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Files with selected extension using pre-computed Extension column",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FullPath"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 800
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 30,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP 200\n    fp.FullPath,\n    fp.FileName,\n    fp.FileSize / 1048576.0 AS SizeMB,\n    fp.ModifiedTime\nFROM FileSizes.stats.vw_FileWithPath fp\nWHERE fp.BatchId = '${batchid}'\n  AND '${extension}' <> ''\n  AND LOWER(fp.Extension) = LOWER('${extension}')\nORDER BY fp.FileSize DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Files with .${extension} extension",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Files within selected directory using DirectoryId join",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FullPath"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 800
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "id": 31,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP 200\n    fp.FullPath,\n    fp.FileName,\n    fp.FileSize / 1048576.0 AS SizeMB,\n    fp.ModifiedTime\nFROM FileSizes.stats.vw_FileWithPath fp\nWHERE fp.BatchId = '${batchid}'\n  AND '${directoryid}' <> ''\n  AND fp.DirectoryId = CAST(REPLACE('${directoryid}', ',', '') AS INT)\nORDER BY fp.FileSize DESC",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Files in Directory #${directoryid}",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "id": 105,
+      "panels": [],
+      "title": "Directory Browser",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "Navigate the directory tree",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DirectoryName"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Browse ${__value.text}",
+                    "url": "/d/${__dashboard.uid}/${__dashboard}?var-directoryid=${__data.fields.DirectoryId}&var-batchid=${batchid}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FullPath"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 500
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "id": 40,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    d.DirectoryId,\n    d.DirectoryName,\n    d.FullPath,\n    d.Depth,\n    d.FileCount,\n    d.TotalFileSize / 1073741824.0 AS TotalGB,\n    CASE WHEN d.IsTempCache = 1 THEN 'Yes' ELSE '' END AS TempCache,\n    CASE WHEN d.IsSystemManaged = 1 THEN 'Yes' ELSE '' END AS SystemManaged\nFROM FileSizes.stats.Directory d\nWHERE d.BatchId = '${batchid}'\n  AND d.Depth <= 3\nORDER BY d.TotalFileSize DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Directory Browser (Depth <= 3)",
+      "type": "table"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [
+    "storage",
+    "files",
+    "mft",
+    "v2",
+    "stats"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "MSSQL - Windows Infrastructure",
+          "value": "af0cf392rs5xcc"
+        },
+        "hide": 2,
+        "name": "winventory",
+        "options": [],
+        "query": "mssql",
+        "refresh": 1,
+        "regex": "/^MSSQL - Windows Infrastructure/",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "YKT1OFSPRD1 - 2026-02-10 23:14:07",
+          "value": "DBDAF9FE-DF55-4FC0-A56C-BFB75E7BE81B"
+        },
+        "datasource": {
+          "type": "mssql",
+          "uid": "${winventory}"
+        },
+        "definition": "SELECT TOP 1 CAST(BatchId AS VARCHAR(36)) AS __value,\n       ServerName + ' - ' + CONVERT(VARCHAR, CollectedAtUtc, 120) AS __text\nFROM FileSizes.stats.ScanBatch\nORDER BY CollectedAtUtc DESC",
+        "description": "Select scan batch to analyze (from stats schema)",
+        "includeAll": false,
+        "label": "Scan Batch",
+        "name": "batchid",
+        "options": [],
+        "query": "SELECT CAST(BatchId AS VARCHAR(36)) AS __value,\n       ServerName + ' - ' + CONVERT(VARCHAR, CollectedAtUtc, 120) AS __text\nFROM FileSizes.stats.ScanBatch\nORDER BY CollectedAtUtc DESC",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Filter by file extension (pre-computed column, no string parsing)",
+        "label": "Extension",
+        "name": "extension",
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ],
+        "query": "",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "text": "11,095,708",
+          "value": "11,095,708"
+        },
+        "description": "Filter by DirectoryId (integer join, no string matching)",
+        "label": "Directory ID",
+        "name": "directoryid",
+        "options": [
+          {
+            "selected": true,
+            "text": "11,095,708",
+            "value": "11,095,708"
+          }
+        ],
+        "query": "11,095,708",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "File Storage Analysis (v2 - Stats Schema)",
+  "uid": "file-storage-analysis-v2",
+  "version": 14
+}

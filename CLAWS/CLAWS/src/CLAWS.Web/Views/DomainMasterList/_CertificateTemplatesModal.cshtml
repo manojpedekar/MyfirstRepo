@@ -1,0 +1,200 @@
+@model DomainEditViewModel
+@* Certificate Templates Modal - displays all certificate templates for the forest *@
+
+<div class="modal fade" id="certificateTemplatesModal" tabindex="-1" aria-labelledby="certificateTemplatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="certificateTemplatesModalLabel">
+                    <i class="bi bi-file-earmark-text"></i> Certificate Templates
+                    <span class="badge bg-info ms-2" id="certificateTemplatesCount">0</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Search filter -->
+                <div class="p-2 border-bottom bg-light">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <label for="templateSearch" class="col-form-label col-form-label-sm">
+                                <i class="bi bi-search"></i> Filter:
+                            </label>
+                        </div>
+                        <div class="col">
+                            <input type="text" id="templateSearch" class="form-control form-control-sm"
+                                   placeholder="Search by template name..." oninput="filterTemplates()">
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearTemplateFilter()">
+                                <i class="bi bi-x-lg"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading state -->
+                <div id="certificateTemplatesLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading certificate templates...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="certificateTemplatesError" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span id="certificateTemplatesErrorMessage"></span>
+                </div>
+
+                <!-- Empty state -->
+                <div id="certificateTemplatesEmpty" class="text-center text-muted py-4 d-none">
+                    <i class="bi bi-file-earmark-x fs-1 d-block mb-2"></i>
+                    <p>No certificate templates found.</p>
+                </div>
+
+                <!-- Data table -->
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0 d-none" id="certificateTemplatesTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th class="ps-3" title="The internal name used in Active Directory for the certificate template (cn attribute)">Template Name</th>
+                                <th title="The user-friendly name shown in certificate enrollment interfaces and MMC snap-ins">Display Name</th>
+                                <th class="text-center" style="width: 70px;" title="Template schema version: v1=Basic (Win2000), v2=Enhanced (Win2003), v3=Cryptography NG (Win2008), v4=Key Attestation (Win2012)">Schema</th>
+                                <th class="text-center" style="width: 80px;" title="Minimum cryptographic key size in bits. Keys under 2048 bits are considered weak.">Key Size</th>
+                                <th style="width: 100px;" title="How long certificates issued from this template remain valid before expiration">Validity</th>
+                                <th style="width: 100px;" title="The period before expiration when certificate holders can request a renewal">Renewal</th>
+                                <th class="text-center" style="width: 60px;" title="Number of Registration Authority (enrollment agent) signatures required before a certificate can be issued">RA</th>
+                            </tr>
+                        </thead>
+                        <tbody id="certificateTemplatesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <small class="text-muted me-auto">
+                    <i class="bi bi-info-circle"></i> Forest: @Model.PkiSummary?.ForestName
+                </small>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let templatesLoaded = false;
+    let allTemplates = [];
+
+    const modal = document.getElementById('certificateTemplatesModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function () {
+            if (!templatesLoaded) {
+                loadCertificateTemplates();
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    window.loadCertificateTemplates = function() {
+        const domainId = @Model.Domain.DomainID;
+
+        document.getElementById('certificateTemplatesLoading').classList.remove('d-none');
+        document.getElementById('certificateTemplatesTable').classList.add('d-none');
+        document.getElementById('certificateTemplatesError').classList.add('d-none');
+        document.getElementById('certificateTemplatesEmpty').classList.add('d-none');
+
+        fetch(`/DomainMasterList/GetCertificateTemplates?domainId=${domainId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('certificateTemplatesLoading').classList.add('d-none');
+
+                if (!data.success) {
+                    document.getElementById('certificateTemplatesError').classList.remove('d-none');
+                    document.getElementById('certificateTemplatesErrorMessage').textContent = data.message;
+                    return;
+                }
+
+                allTemplates = data.templates;
+                document.getElementById('certificateTemplatesCount').textContent = data.totalCount;
+
+                if (data.totalCount === 0) {
+                    document.getElementById('certificateTemplatesEmpty').classList.remove('d-none');
+                    return;
+                }
+
+                renderTemplates(allTemplates);
+                document.getElementById('certificateTemplatesTable').classList.remove('d-none');
+                templatesLoaded = true;
+            })
+            .catch(error => {
+                document.getElementById('certificateTemplatesLoading').classList.add('d-none');
+                document.getElementById('certificateTemplatesError').classList.remove('d-none');
+                document.getElementById('certificateTemplatesErrorMessage').textContent = 'Failed to load templates: ' + error.message;
+            });
+    };
+
+    function renderTemplates(templates) {
+        const tbody = document.getElementById('certificateTemplatesBody');
+        tbody.innerHTML = '';
+
+        templates.forEach(function(t) {
+            const row = document.createElement('tr');
+
+            const schemaClass = t.schemaVersion === 1 ? 'secondary' :
+                               t.schemaVersion === 2 ? 'primary' :
+                               t.schemaVersion === 3 ? 'success' : 'info';
+
+            const keyWarning = t.minKeySize > 0 && t.minKeySize < 2048
+                ? '<i class="bi bi-exclamation-triangle text-warning ms-1" title="Weak key size"></i>'
+                : '';
+
+            row.innerHTML = `
+                <td class="ps-3">
+                    <code>${escapeHtml(t.templateName)}</code>
+                </td>
+                <td>
+                    <strong>${escapeHtml(t.displayName || t.templateName)}</strong>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-${schemaClass}">v${t.schemaVersion}</span>
+                </td>
+                <td class="text-center">
+                    ${t.minKeySize > 0 ? t.minKeySize : '<span class="text-muted">—</span>'}${keyWarning}
+                </td>
+                <td>
+                    ${t.validityPeriod ? escapeHtml(t.validityPeriod) : '<span class="text-muted">—</span>'}
+                </td>
+                <td>
+                    ${t.renewalPeriod ? escapeHtml(t.renewalPeriod) : '<span class="text-muted">—</span>'}
+                </td>
+                <td class="text-center">
+                    ${t.raSignaturesRequired > 0
+                        ? `<span class="badge bg-secondary">${t.raSignaturesRequired}</span>`
+                        : '<span class="text-muted">0</span>'}
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    window.filterTemplates = function() {
+        const searchTerm = document.getElementById('templateSearch').value.toLowerCase();
+        const filtered = allTemplates.filter(t =>
+            (t.templateName && t.templateName.toLowerCase().includes(searchTerm)) ||
+            (t.displayName && t.displayName.toLowerCase().includes(searchTerm))
+        );
+        renderTemplates(filtered);
+    };
+
+    window.clearTemplateFilter = function() {
+        document.getElementById('templateSearch').value = '';
+        renderTemplates(allTemplates);
+    };
+})();
+</script>

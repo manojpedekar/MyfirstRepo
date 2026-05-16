@@ -1,0 +1,162 @@
+@model DomainLogsViewModel
+@{
+    ViewData["Title"] = $"Collection Logs: {Model.DomainName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-journal-text"></i> Collection Logs: @Model.DomainName
+    </h1>
+    <a asp-action="Edit" asp-route-id="@Model.DomainID" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Domain
+    </a>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <span class="text-muted small">Collection ID:</span>
+                        <code class="small">@Model.CollectionId</code>
+                        @if (Model.CollectionDateTime.HasValue)
+                        {
+                            <span class="text-muted small ms-3">Collected:</span>
+                            <span data-utc="@Model.CollectionDateTime.Value.ToString("o")" data-format="full">
+                                @Model.CollectionDateTime.Value.ToString("g")
+                            </span>
+                        }
+                    </div>
+                    <div>
+                        @if (Model.ErrorCount > 0)
+                        {
+                            <span class="badge bg-danger me-1">
+                                <i class="bi bi-x-circle-fill"></i> @Model.ErrorCount Errors
+                            </span>
+                        }
+                        @if (Model.WarningCount > 0)
+                        {
+                            <span class="badge bg-warning text-dark me-1">
+                                <i class="bi bi-exclamation-triangle-fill"></i> @Model.WarningCount Warnings
+                            </span>
+                        }
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-list"></i> @Model.Logs.Count Total
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Log Entries</span>
+                <div class="d-flex align-items-center gap-2">
+                    <select id="levelFilter" class="form-select form-select-sm" style="width: auto;">
+                        <option value="all">All Levels</option>
+                        <option value="error">Errors Only</option>
+                        <option value="warning">Warnings Only</option>
+                        <option value="info">Info Only</option>
+                    </select>
+                    <input type="text" id="searchFilter" class="form-control form-control-sm"
+                           placeholder="Search messages..." style="width: 200px;">
+                    <span class="badge bg-secondary" id="logCount">@Model.Logs.Count</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Logs.Count == 0)
+                {
+                    <div class="alert alert-info m-3 mb-0">
+                        <i class="bi bi-info-circle"></i> No log entries found for this collection.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table id="logsTable" class="table table-striped table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 160px;">Timestamp</th>
+                                    <th style="width: 90px;">Level</th>
+                                    <th style="width: 120px;">Category</th>
+                                    <th>Message</th>
+                                    <th style="width: 200px;">Exception</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in Model.Logs)
+                                {
+                                    <tr class="log-row" data-level="@log.Level.ToLower()">
+                                        <td class="text-nowrap small">
+                                            <span data-utc="@log.Timestamp.ToString("o")" data-format="time">
+                                                @log.Timestamp.ToString("HH:mm:ss.fff")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-@log.LevelBadgeClass">
+                                                <i class="bi @log.LevelIcon"></i> @log.Level
+                                            </span>
+                                        </td>
+                                        <td class="small">@log.Category</td>
+                                        <td>
+                                            <span class="log-message">@log.Message</span>
+                                            @if (!string.IsNullOrEmpty(log.Context))
+                                            {
+                                                <br /><code class="small text-muted">@log.DisplayContext</code>
+                                            }
+                                        </td>
+                                        <td class="text-danger small">
+                                            @if (!string.IsNullOrEmpty(log.ExceptionMessage))
+                                            {
+                                                <span title="@log.ExceptionType">@log.ExceptionMessage</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var levelFilter = document.getElementById('levelFilter');
+        var searchFilter = document.getElementById('searchFilter');
+        var logCountBadge = document.getElementById('logCount');
+        var rows = document.querySelectorAll('.log-row');
+
+        function applyFilters() {
+            var levelValue = levelFilter.value.toLowerCase();
+            var searchValue = searchFilter.value.toLowerCase();
+            var visibleCount = 0;
+
+            rows.forEach(function(row) {
+                var rowLevel = row.getAttribute('data-level');
+                var message = row.querySelector('.log-message').textContent.toLowerCase();
+
+                var levelMatch = levelValue === 'all' || rowLevel === levelValue;
+                var searchMatch = searchValue === '' || message.includes(searchValue);
+
+                var shouldShow = levelMatch && searchMatch;
+                row.style.display = shouldShow ? '' : 'none';
+                if (shouldShow) visibleCount++;
+            });
+
+            logCountBadge.textContent = visibleCount;
+        }
+
+        levelFilter.addEventListener('change', applyFilters);
+        searchFilter.addEventListener('input', applyFilters);
+    });
+</script>
+}

@@ -1,0 +1,1161 @@
+@model TopologyViewModel
+@{
+    ViewData["Title"] = "AD Site Topology";
+}
+
+@section Styles {
+<style>
+    /* Topology container - resizable */
+    #topology-container {
+        width: 100%;
+        height: 100%;
+        min-height: 400px;
+        background-color: #f8f9fa;
+    }
+
+    .topology-card-body {
+        height: calc(100vh - 220px);
+        min-height: 400px;
+        resize: vertical;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Compact summary stats */
+    .summary-stat {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        background: #f8f9fa;
+        border-radius: 0.25rem;
+        margin-right: 0.5rem;
+        border: 1px solid #dee2e6;
+    }
+
+    .summary-stat .stat-value {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-right: 0.35rem;
+    }
+
+    .summary-stat .stat-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    /* Inline legend */
+    .legend-inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .legend-item-inline {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.75rem;
+    }
+
+    .legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        margin-right: 4px;
+        border: 1px solid rgba(0,0,0,0.2);
+    }
+
+    .legend-color-outline {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        margin-right: 4px;
+        background: transparent;
+    }
+
+    /* Controls bar */
+    .controls-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.5rem 0;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .control-group label {
+        font-size: 0.8rem;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+    }
+
+    .loading-overlay.hidden {
+        display: none;
+    }
+
+    /* Cytoscape tooltip styling */
+    .cy-tooltip {
+        position: absolute;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 8px 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        pointer-events: none;
+        z-index: 1000;
+        max-width: 300px;
+        font-size: 0.875rem;
+    }
+
+    .cy-tooltip h6 {
+        margin: 0 0 4px 0;
+        font-size: 0.9rem;
+    }
+
+    .cy-tooltip p {
+        margin: 0;
+        color: #6c757d;
+    }
+
+    /* Details panel - floating */
+    #details-panel {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 250px;
+        z-index: 50;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    /* Resize handle indicator */
+    .topology-card-body::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 50px;
+        height: 4px;
+        background: #dee2e6;
+        border-radius: 2px;
+        cursor: ns-resize;
+    }
+</style>
+}
+
+<div class="container-fluid py-3">
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-circle"></i> @Model.ErrorMessage
+        </div>
+        @if (Model.DomainId > 0)
+        {
+            <a asp-controller="DomainMasterList" asp-action="Edit" asp-route-id="@Model.DomainId" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Domain
+            </a>
+        }
+    }
+    else
+    {
+        <!-- Header with compact stats -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <h5 class="mb-0 me-3">
+                    <i class="bi bi-diagram-3"></i> AD Site Topology
+                </h5>
+                <span class="summary-stat">
+                    <span class="stat-value text-primary" id="site-count">@Model.Summary.SiteCount</span>
+                    <span class="stat-label">Sites</span>
+                </span>
+                <span class="summary-stat">
+                    <span class="stat-value text-success" id="subnet-count">@Model.Summary.SubnetCount</span>
+                    <span class="stat-label">Subnets</span>
+                </span>
+                <span class="summary-stat">
+                    <span class="stat-value text-info" id="link-count">@Model.Summary.SiteLinkCount</span>
+                    <span class="stat-label">Site Links</span>
+                </span>
+                <span class="summary-stat">
+                    <span class="stat-value text-warning" id="dc-count">@Model.Summary.DomainControllerCount</span>
+                    <span class="stat-label">DCs</span>
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <small class="text-muted d-none d-md-inline">
+                    @if (!string.IsNullOrEmpty(Model.ForestName))
+                    {
+                        <span>@Model.ForestName</span>
+                        <span class="mx-1">/</span>
+                    }
+                    <span>@Model.DomainName</span>
+                    @if (Model.CollectionDateTime.HasValue)
+                    {
+                        <span class="mx-1">|</span>
+                        <span>@Model.CollectionDateTime.Value.ToString("g")</span>
+                    }
+                </small>
+                @if (Model.DomainId > 0)
+                {
+                    <a asp-controller="DomainMasterList" asp-action="Edit" asp-route-id="@Model.DomainId" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                }
+            </div>
+        </div>
+
+        <!-- Controls and Legend Bar -->
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <!-- Display Options -->
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="control-group">
+                            <label for="layout-select">Layout:</label>
+                            <select class="form-select form-select-sm" id="layout-select" style="width: auto;">
+                                <option value="concentric" selected>Concentric</option>
+                                <option value="grid">Grid</option>
+                                <option value="circle">Circle</option>
+                                <option value="cose">Force-directed</option>
+                                <option value="breadthfirst">Hierarchical</option>
+                            </select>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="show-dcs" checked>
+                            <label class="form-check-label small" for="show-dcs">Show DCs</label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="show-link-labels" checked>
+                            <label class="form-check-label small" for="show-link-labels">Link Costs</label>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="legend-inline">
+                        <span class="legend-item-inline"><span class="legend-color" style="background: #0d6efd;"></span>Site</span>
+                        <span class="legend-item-inline"><span class="legend-color" style="background: #198754;"></span>DC</span>
+                        <span class="legend-item-inline"><span class="legend-color" style="background: #ffc107;"></span>GC</span>
+                        <span class="legend-item-inline"><span class="legend-color" style="background: #dc3545;"></span>ISTG</span>
+                        <span class="text-muted mx-1">|</span>
+                        <span class="legend-item-inline"><span class="legend-color-outline" style="border: 2px solid #198754;"></span>&le;100</span>
+                        <span class="legend-item-inline"><span class="legend-color-outline" style="border: 2px solid #ffc107;"></span>101-300</span>
+                        <span class="legend-item-inline"><span class="legend-color-outline" style="border: 2px solid #dc3545;"></span>&gt;300</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Topology Card - Full Width -->
+        <div class="card">
+            <div class="card-header bg-secondary-subtle py-1 d-flex justify-content-between align-items-center">
+                <small class="text-muted">Drag bottom edge to resize</small>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-zoom-in" title="Zoom In">
+                        <i class="bi bi-zoom-in"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-zoom-out" title="Zoom Out">
+                        <i class="bi bi-zoom-out"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-fit" title="Fit to Screen">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset" title="Reset Layout">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body topology-card-body p-0">
+                <div id="topology-container"></div>
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary mb-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mb-0">Loading topology data...</p>
+                    </div>
+                </div>
+                <!-- Floating Details Panel -->
+                <div class="card" id="details-panel" style="display: none;">
+                    <div class="card-header bg-secondary-subtle py-1 d-flex justify-content-between align-items-center">
+                        <small><i class="bi bi-info-circle"></i> <span id="details-title">Details</span></small>
+                        <button type="button" class="btn-close btn-sm" id="close-details"></button>
+                    </div>
+                    <div class="card-body py-2" id="details-content" style="font-size: 0.85rem;">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Tooltip element -->
+<div class="cy-tooltip" id="cy-tooltip" style="display: none;"></div>
+
+@section Scripts {
+    <!-- Cytoscape.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.4/cytoscape.min.js"
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        (function() {
+            const collectionId = '@Model.CollectionId';
+            let cy = null;
+            let topologyData = null;
+
+            // Layout configuration constants
+            const LAYOUT_CONFIG = {
+                dcSize: 26,              // DC node diameter
+                dcSpacing: 10,           // Space between DC nodes
+                sitePadding: 12,         // Padding inside site boundary
+                siteLabelHeight: 18,     // Space for site label at top
+                maxDCsPerRow: 6,         // Max DCs per row before wrapping
+                siteSpacingH: 50,        // Horizontal space between sites
+                siteSpacingV: 40,        // Vertical space between sites
+                canvasWidth: 1400        // Virtual canvas width for grid layout
+            };
+
+            // Initialize when DOM is ready
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('[Topology] DOM loaded, collectionId:', collectionId);
+                loadTopologyData();
+                setupEventListeners();
+            });
+
+            async function loadTopologyData() {
+                console.log('[Topology] Loading topology data...');
+                try {
+                    const url = `/Topology/GetData?collectionId=${collectionId}`;
+                    console.log('[Topology] Fetching:', url);
+
+                    const response = await fetch(url);
+                    console.log('[Topology] Response status:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('[Topology] Response not OK:', errorText);
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
+
+                    const responseText = await response.text();
+                    console.log('[Topology] Response length:', responseText.length, 'chars');
+
+                    try {
+                        topologyData = JSON.parse(responseText);
+                        console.log('[Topology] Parsed data:', {
+                            sites: topologyData.sites?.length || 0,
+                            domainControllers: topologyData.domainControllers?.length || 0,
+                            siteLinks: topologyData.siteLinks?.length || 0,
+                            subnets: topologyData.subnets?.length || 0
+                        });
+                    } catch (parseError) {
+                        console.error('[Topology] JSON parse error:', parseError);
+                        console.error('[Topology] Response text (first 500 chars):', responseText.substring(0, 500));
+                        throw new Error('Failed to parse JSON response');
+                    }
+
+                    initializeCytoscape();
+                } catch (error) {
+                    console.error('[Topology] Error loading topology:', error);
+                    document.getElementById('loading-overlay').innerHTML =
+                        `<div class="text-center text-danger"><i class="bi bi-exclamation-circle fs-1"></i><p>Failed to load topology data</p><p class="small text-muted">${error.message}</p></div>`;
+                }
+            }
+
+            /**
+             * Calculate the dimensions needed for a site based on its DC count.
+             */
+            function calculateSiteDimensions(dcCount) {
+                const cfg = LAYOUT_CONFIG;
+                if (dcCount === 0) {
+                    return { width: 80, height: 50, cols: 0, rows: 0 };
+                }
+
+                const cols = Math.min(dcCount, cfg.maxDCsPerRow);
+                const rows = Math.ceil(dcCount / cols);
+                const cellSize = cfg.dcSize + cfg.dcSpacing;
+
+                const contentWidth = cols * cellSize - cfg.dcSpacing;
+                const contentHeight = rows * cellSize - cfg.dcSpacing;
+
+                return {
+                    width: contentWidth + cfg.sitePadding * 2,
+                    height: contentHeight + cfg.sitePadding * 2 + cfg.siteLabelHeight,
+                    cols: cols,
+                    rows: rows
+                };
+            }
+
+            /**
+             * Calculate positions for all sites and DCs using a grid-based approach.
+             * Sites are arranged in rows, sorted by DC count (largest first).
+             * DCs are arranged in a compact grid within each site.
+             */
+            function calculateGridPositions(data) {
+                const cfg = LAYOUT_CONFIG;
+                const positions = { sites: {}, dcs: {} };
+
+                // Build DC lookup by site
+                const dcsBySite = {};
+                data.sites.forEach(site => {
+                    dcsBySite[site.id] = data.domainControllers.filter(dc => dc.siteId === site.id);
+                });
+
+                // Calculate dimensions for each site
+                const siteDims = {};
+                data.sites.forEach(site => {
+                    siteDims[site.id] = calculateSiteDimensions(dcsBySite[site.id].length);
+                });
+
+                // Sort sites by DC count (largest first) for better packing
+                const sortedSites = [...data.sites].sort((a, b) => {
+                    return dcsBySite[b.id].length - dcsBySite[a.id].length;
+                });
+
+                // Arrange sites in rows
+                let currentX = 0;
+                let currentY = 0;
+                let rowHeight = 0;
+
+                sortedSites.forEach(site => {
+                    const dim = siteDims[site.id];
+
+                    // Check if site fits in current row
+                    if (currentX > 0 && currentX + dim.width > cfg.canvasWidth) {
+                        // Move to next row
+                        currentX = 0;
+                        currentY += rowHeight + cfg.siteSpacingV;
+                        rowHeight = 0;
+                    }
+
+                    // Site center position
+                    positions.sites[site.id] = {
+                        x: currentX + dim.width / 2,
+                        y: currentY + dim.height / 2
+                    };
+
+                    // Calculate DC positions within this site
+                    const siteDCs = dcsBySite[site.id];
+                    const cellSize = cfg.dcSize + cfg.dcSpacing;
+
+                    siteDCs.forEach((dc, index) => {
+                        const col = index % dim.cols;
+                        const row = Math.floor(index / dim.cols);
+
+                        // DC position relative to site top-left, accounting for padding and label
+                        const dcX = currentX + cfg.sitePadding + col * cellSize + cfg.dcSize / 2;
+                        const dcY = currentY + cfg.siteLabelHeight + cfg.sitePadding + row * cellSize + cfg.dcSize / 2;
+
+                        positions.dcs[dc.id] = { x: dcX, y: dcY };
+                    });
+
+                    // Move to next position in row
+                    currentX += dim.width + cfg.siteSpacingH;
+                    rowHeight = Math.max(rowHeight, dim.height);
+                });
+
+                return positions;
+            }
+
+            /**
+             * Calculate positions using a circle layout for sites.
+             * DCs remain in compact grid within each site.
+             */
+            function calculateCirclePositions(data) {
+                const cfg = LAYOUT_CONFIG;
+                const positions = { sites: {}, dcs: {} };
+
+                // Build DC lookup by site
+                const dcsBySite = {};
+                data.sites.forEach(site => {
+                    dcsBySite[site.id] = data.domainControllers.filter(dc => dc.siteId === site.id);
+                });
+
+                // Calculate max site dimension for radius calculation
+                let maxDim = 0;
+                const siteDims = {};
+                data.sites.forEach(site => {
+                    siteDims[site.id] = calculateSiteDimensions(dcsBySite[site.id].length);
+                    maxDim = Math.max(maxDim, siteDims[site.id].width, siteDims[site.id].height);
+                });
+
+                // Calculate circle radius based on site count and max dimension
+                const siteCount = data.sites.length;
+                const circumference = siteCount * (maxDim + cfg.siteSpacingH);
+                const radius = Math.max(circumference / (2 * Math.PI), maxDim + cfg.siteSpacingH);
+                const centerX = radius + maxDim / 2;
+                const centerY = radius + maxDim / 2;
+
+                // Position each site around the circle
+                data.sites.forEach((site, index) => {
+                    const angle = (2 * Math.PI * index / siteCount) - Math.PI / 2; // Start at top
+                    const siteX = centerX + radius * Math.cos(angle);
+                    const siteY = centerY + radius * Math.sin(angle);
+                    const dim = siteDims[site.id];
+
+                    positions.sites[site.id] = { x: siteX, y: siteY };
+
+                    // Calculate DC positions within this site
+                    const siteDCs = dcsBySite[site.id];
+                    const cellSize = cfg.dcSize + cfg.dcSpacing;
+
+                    siteDCs.forEach((dc, dcIndex) => {
+                        const col = dcIndex % dim.cols;
+                        const row = Math.floor(dcIndex / dim.cols);
+
+                        const dcX = siteX - dim.width / 2 + cfg.sitePadding + col * cellSize + cfg.dcSize / 2;
+                        const dcY = siteY - dim.height / 2 + cfg.siteLabelHeight + cfg.sitePadding + row * cellSize + cfg.dcSize / 2;
+
+                        positions.dcs[dc.id] = { x: dcX, y: dcY };
+                    });
+                });
+
+                return positions;
+            }
+
+            /**
+             * Calculate positions using a concentric layout (hub-and-spoke).
+             * Sites with more connections are placed in inner rings.
+             */
+            function calculateConcentricPositions(data) {
+                const cfg = LAYOUT_CONFIG;
+                const positions = { sites: {}, dcs: {} };
+
+                // Build DC lookup and calculate site degrees (connections)
+                const dcsBySite = {};
+                const siteDegree = {};
+                data.sites.forEach(site => {
+                    dcsBySite[site.id] = data.domainControllers.filter(dc => dc.siteId === site.id);
+                    siteDegree[site.id] = 0;
+                });
+
+                // Count connections per site from site links
+                data.siteLinks.forEach(link => {
+                    link.siteIds.forEach(siteId => {
+                        if (siteDegree[siteId] !== undefined) {
+                            siteDegree[siteId] += link.siteIds.length - 1;
+                        }
+                    });
+                });
+
+                // Calculate site dimensions
+                let maxDim = 0;
+                const siteDims = {};
+                data.sites.forEach(site => {
+                    siteDims[site.id] = calculateSiteDimensions(dcsBySite[site.id].length);
+                    maxDim = Math.max(maxDim, siteDims[site.id].width, siteDims[site.id].height);
+                });
+
+                // Sort sites by degree (most connected first)
+                const sortedSites = [...data.sites].sort((a, b) => siteDegree[b.id] - siteDegree[a.id]);
+
+                // Arrange in concentric rings
+                const ringSpacing = maxDim + cfg.siteSpacingH;
+                let currentRing = 0;
+                let sitesInRing = 1;
+                let siteIndexInRing = 0;
+                const centerX = cfg.canvasWidth / 2;
+                const centerY = 400;
+
+                sortedSites.forEach((site, index) => {
+                    const dim = siteDims[site.id];
+                    let siteX, siteY;
+
+                    if (currentRing === 0) {
+                        // Center site
+                        siteX = centerX;
+                        siteY = centerY;
+                        currentRing = 1;
+                        sitesInRing = 6;
+                        siteIndexInRing = 0;
+                    } else {
+                        const angle = (2 * Math.PI * siteIndexInRing / sitesInRing) - Math.PI / 2;
+                        const radius = currentRing * ringSpacing;
+                        siteX = centerX + radius * Math.cos(angle);
+                        siteY = centerY + radius * Math.sin(angle);
+
+                        siteIndexInRing++;
+                        if (siteIndexInRing >= sitesInRing) {
+                            currentRing++;
+                            sitesInRing = Math.floor(currentRing * 6);
+                            siteIndexInRing = 0;
+                        }
+                    }
+
+                    positions.sites[site.id] = { x: siteX, y: siteY };
+
+                    // Calculate DC positions
+                    const siteDCs = dcsBySite[site.id];
+                    const cellSize = cfg.dcSize + cfg.dcSpacing;
+
+                    siteDCs.forEach((dc, dcIndex) => {
+                        const col = dcIndex % dim.cols;
+                        const row = Math.floor(dcIndex / dim.cols);
+
+                        const dcX = siteX - dim.width / 2 + cfg.sitePadding + col * cellSize + cfg.dcSize / 2;
+                        const dcY = siteY - dim.height / 2 + cfg.siteLabelHeight + cfg.sitePadding + row * cellSize + cfg.dcSize / 2;
+
+                        positions.dcs[dc.id] = { x: dcX, y: dcY };
+                    });
+                });
+
+                return positions;
+            }
+
+            function initializeCytoscape() {
+                console.log('[Topology] Initializing Cytoscape...');
+
+                try {
+                    // Check if Cytoscape is loaded
+                    if (typeof cytoscape === 'undefined') {
+                        throw new Error('Cytoscape.js library not loaded');
+                    }
+                    console.log('[Topology] Cytoscape library version:', cytoscape.version);
+
+                    // Calculate initial positions using concentric layout
+                    const positions = calculateConcentricPositions(topologyData);
+                    console.log('[Topology] Calculated positions for', Object.keys(positions.sites).length, 'sites and', Object.keys(positions.dcs).length, 'DCs');
+
+                    const elements = buildElements(topologyData, positions);
+                    console.log('[Topology] Built', elements.length, 'elements');
+
+                    const container = document.getElementById('topology-container');
+                    if (!container) {
+                        throw new Error('Container element not found');
+                    }
+                    console.log('[Topology] Container size:', container.offsetWidth, 'x', container.offsetHeight);
+
+                    cy = cytoscape({
+                        container: container,
+                        elements: elements,
+                        style: getStylesheet(),
+                        layout: { name: 'preset' },  // Use preset since we calculated positions
+                        minZoom: 0.1,
+                        maxZoom: 3
+                    });
+
+                    console.log('[Topology] Cytoscape initialized, nodes:', cy.nodes().length, 'edges:', cy.edges().length);
+
+                    // Fit to view
+                    cy.fit(30);
+
+                    // Hide loading overlay
+                    document.getElementById('loading-overlay').classList.add('hidden');
+
+                    // Setup node interactions
+                    setupNodeInteractions();
+                    console.log('[Topology] Initialization complete');
+                } catch (error) {
+                    console.error('[Topology] Error initializing Cytoscape:', error);
+                    document.getElementById('loading-overlay').innerHTML =
+                        `<div class="text-center text-danger"><i class="bi bi-exclamation-circle fs-1"></i><p>Failed to initialize visualization</p><p class="small text-muted">${error.message}</p></div>`;
+                }
+            }
+
+            function buildElements(data, positions) {
+                const elements = [];
+
+                // Add site nodes (compound nodes that contain DCs)
+                data.sites.forEach(site => {
+                    const element = {
+                        group: 'nodes',
+                        data: {
+                            id: site.id,
+                            label: site.name,
+                            type: 'site',
+                            description: site.description,
+                            location: site.location,
+                            subnetCount: site.subnetCount,
+                            dcCount: site.domainControllerCount,
+                            gcCount: site.globalCatalogCount,
+                            istg: site.istg
+                        }
+                    };
+                    // Note: Don't set position for compound nodes - they're positioned by their children
+                    elements.push(element);
+                });
+
+                // Add DC nodes as children of sites with calculated positions
+                data.domainControllers.forEach(dc => {
+                    const element = {
+                        group: 'nodes',
+                        data: {
+                            id: dc.id,
+                            label: dc.name,
+                            parent: dc.siteId,
+                            type: 'dc',
+                            dnsHostName: dc.dnsHostName,
+                            isGlobalCatalog: dc.isGlobalCatalog,
+                            isRODC: dc.isRODC,
+                            isISTG: dc.isISTG,
+                            operatingSystem: dc.operatingSystem
+                        }
+                    };
+                    // Set position from calculated positions
+                    if (positions && positions.dcs[dc.id]) {
+                        element.position = positions.dcs[dc.id];
+                    }
+                    elements.push(element);
+                });
+
+                // Add site link edges
+                // For links connecting multiple sites, create edges between all pairs
+                data.siteLinks.forEach(link => {
+                    if (link.siteIds.length >= 2) {
+                        // Create edge between first two sites (most common case)
+                        for (let i = 0; i < link.siteIds.length - 1; i++) {
+                            for (let j = i + 1; j < link.siteIds.length; j++) {
+                                elements.push({
+                                    group: 'edges',
+                                    data: {
+                                        id: `${link.id}-${i}-${j}`,
+                                        source: link.siteIds[i],
+                                        target: link.siteIds[j],
+                                        label: link.cost ? `Cost: ${link.cost}` : link.name,
+                                        linkName: link.name,
+                                        cost: link.cost,
+                                        replicationInterval: link.replicationInterval,
+                                        transportType: link.transportType,
+                                        useNotification: link.useNotification,
+                                        twoWaySync: link.twoWaySync
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+
+                return elements;
+            }
+
+            function getStylesheet() {
+                const cfg = LAYOUT_CONFIG;
+                return [
+                    // Site nodes (compound)
+                    {
+                        selector: 'node[type="site"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-color': '#0d6efd',
+                            'background-opacity': 0.15,
+                            'border-color': '#0d6efd',
+                            'border-width': 2,
+                            'label': 'data(label)',
+                            'text-valign': 'top',
+                            'text-halign': 'center',
+                            'font-size': '11px',
+                            'font-weight': 'bold',
+                            'color': '#0d6efd',
+                            'text-margin-y': -5,
+                            'padding': cfg.sitePadding + 'px',
+                            'min-width': '60px',
+                            'min-height': '40px',
+                            'compound-sizing-wrt-labels': 'include'
+                        }
+                    },
+                    // DC nodes - compact size
+                    {
+                        selector: 'node[type="dc"]',
+                        style: {
+                            'shape': 'ellipse',
+                            'background-color': '#198754',
+                            'width': cfg.dcSize,
+                            'height': cfg.dcSize,
+                            'label': '',  // Hide labels by default for compact view
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '8px',
+                            'text-margin-y': 2
+                        }
+                    },
+                    // Show DC labels on hover/selection
+                    {
+                        selector: 'node[type="dc"]:selected',
+                        style: {
+                            'label': 'data(label)'
+                        }
+                    },
+                    // Global Catalog
+                    {
+                        selector: 'node[type="dc"][?isGlobalCatalog]',
+                        style: {
+                            'background-color': '#ffc107',
+                            'border-color': '#fd7e14',
+                            'border-width': 2
+                        }
+                    },
+                    // ISTG
+                    {
+                        selector: 'node[type="dc"][?isISTG]',
+                        style: {
+                            'shape': 'star',
+                            'background-color': '#dc3545',
+                            'width': cfg.dcSize + 4,
+                            'height': cfg.dcSize + 4
+                        }
+                    },
+                    // Selected node
+                    {
+                        selector: 'node:selected',
+                        style: {
+                            'border-color': '#212529',
+                            'border-width': 3
+                        }
+                    },
+                    // Site link edges - color based on cost
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#198754',
+                            'target-arrow-color': '#198754',
+                            'curve-style': 'bezier',
+                            'label': 'data(label)',
+                            'font-size': '10px',
+                            'text-rotation': 'autorotate',
+                            'text-margin-y': -10,
+                            'text-background-color': '#fff',
+                            'text-background-opacity': 0.8,
+                            'text-background-padding': '2px'
+                        }
+                    },
+                    // Medium cost links (101-300)
+                    {
+                        selector: 'edge[cost > 100][cost <= 300]',
+                        style: {
+                            'line-color': '#ffc107',
+                            'target-arrow-color': '#ffc107'
+                        }
+                    },
+                    // High cost links (>300)
+                    {
+                        selector: 'edge[cost > 300]',
+                        style: {
+                            'line-color': '#dc3545',
+                            'target-arrow-color': '#dc3545'
+                        }
+                    },
+                    // Selected edge
+                    {
+                        selector: 'edge:selected',
+                        style: {
+                            'width': 4,
+                            'line-color': '#212529'
+                        }
+                    },
+                    // Hidden DCs
+                    {
+                        selector: 'node[type="dc"].hidden',
+                        style: {
+                            'display': 'none'
+                        }
+                    },
+                    // Hidden labels
+                    {
+                        selector: 'edge.hide-label',
+                        style: {
+                            'label': ''
+                        }
+                    }
+                ];
+            }
+
+            function setupNodeInteractions() {
+                // Click on node to show details
+                cy.on('tap', 'node', function(evt) {
+                    const node = evt.target;
+                    showNodeDetails(node.data());
+                });
+
+                // Click on edge to show details
+                cy.on('tap', 'edge', function(evt) {
+                    const edge = evt.target;
+                    showEdgeDetails(edge.data());
+                });
+
+                // Tap on background to hide details
+                cy.on('tap', function(evt) {
+                    if (evt.target === cy) {
+                        hideDetails();
+                    }
+                });
+
+                // Mouseover tooltip
+                const tooltip = document.getElementById('cy-tooltip');
+
+                cy.on('mouseover', 'node', function(evt) {
+                    const node = evt.target;
+                    const data = node.data();
+                    let html = '';
+
+                    if (data.type === 'site') {
+                        html = `<h6>${data.label}</h6>`;
+                        if (data.description) html += `<p>${data.description}</p>`;
+                        html += `<p><strong>${data.dcCount}</strong> DCs, <strong>${data.subnetCount}</strong> Subnets</p>`;
+                    } else if (data.type === 'dc') {
+                        html = `<h6>${data.label}</h6>`;
+                        if (data.dnsHostName) html += `<p>${data.dnsHostName}</p>`;
+                        const badges = [];
+                        if (data.isGlobalCatalog) badges.push('GC');
+                        if (data.isISTG) badges.push('ISTG');
+                        if (data.isRODC) badges.push('RODC');
+                        if (badges.length > 0) html += `<p><strong>${badges.join(', ')}</strong></p>`;
+                    }
+
+                    tooltip.innerHTML = html;
+                    tooltip.style.display = 'block';
+                    updateTooltipPosition(evt.originalEvent);
+                });
+
+                cy.on('mousemove', 'node', function(evt) {
+                    updateTooltipPosition(evt.originalEvent);
+                });
+
+                cy.on('mouseout', 'node', function() {
+                    tooltip.style.display = 'none';
+                });
+
+                function updateTooltipPosition(event) {
+                    tooltip.style.left = (event.clientX + 15) + 'px';
+                    tooltip.style.top = (event.clientY + 15) + 'px';
+                }
+            }
+
+            function showNodeDetails(data) {
+                const panel = document.getElementById('details-panel');
+                const title = document.getElementById('details-title');
+                const content = document.getElementById('details-content');
+
+                let html = '';
+
+                if (data.type === 'site') {
+                    title.textContent = 'Site Details';
+                    html = `
+                        <h6 class="mb-2">${data.label}</h6>
+                        ${data.description ? `<p class="mb-1"><small class="text-muted">${data.description}</small></p>` : ''}
+                        ${data.location ? `<p class="mb-2"><i class="bi bi-geo-alt"></i> ${data.location}</p>` : ''}
+                        <hr class="my-2">
+                        <div class="row g-2 text-center">
+                            <div class="col-6">
+                                <div class="fw-bold">${data.dcCount}</div>
+                                <small class="text-muted">DCs</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold">${data.subnetCount}</div>
+                                <small class="text-muted">Subnets</small>
+                            </div>
+                        </div>
+                        ${data.istg ? `<hr class="my-2"><p class="mb-0"><small><strong>ISTG:</strong> ${data.istg}</small></p>` : ''}
+                    `;
+                } else if (data.type === 'dc') {
+                    title.textContent = 'Domain Controller';
+                    const badges = [];
+                    if (data.isGlobalCatalog) badges.push('<span class="badge bg-warning text-dark">GC</span>');
+                    if (data.isISTG) badges.push('<span class="badge bg-danger">ISTG</span>');
+                    if (data.isRODC) badges.push('<span class="badge bg-info">RODC</span>');
+
+                    html = `
+                        <h6 class="mb-2">${data.label}</h6>
+                        ${badges.length > 0 ? `<p class="mb-2">${badges.join(' ')}</p>` : ''}
+                        ${data.dnsHostName ? `<p class="mb-1"><small><strong>DNS:</strong> ${data.dnsHostName}</small></p>` : ''}
+                        ${data.operatingSystem ? `<p class="mb-0"><small><strong>OS:</strong> ${data.operatingSystem}</small></p>` : ''}
+                    `;
+                }
+
+                content.innerHTML = html;
+                panel.style.display = 'block';
+            }
+
+            function showEdgeDetails(data) {
+                const panel = document.getElementById('details-panel');
+                const title = document.getElementById('details-title');
+                const content = document.getElementById('details-content');
+
+                title.textContent = 'Site Link';
+
+                const flags = [];
+                if (data.useNotification) flags.push('<span class="badge bg-info">Change Notification</span>');
+                if (data.twoWaySync) flags.push('<span class="badge bg-success">Two-Way Sync</span>');
+
+                content.innerHTML = `
+                    <h6 class="mb-2">${data.linkName}</h6>
+                    <p class="mb-1"><strong>Cost:</strong> ${data.cost || 'N/A'}</p>
+                    <p class="mb-1"><strong>Interval:</strong> ${data.replicationInterval ? data.replicationInterval + ' min' : 'N/A'}</p>
+                    <p class="mb-2"><strong>Transport:</strong> ${data.transportType || 'IP'}</p>
+                    ${flags.length > 0 ? `<p class="mb-0">${flags.join(' ')}</p>` : ''}
+                `;
+
+                panel.style.display = 'block';
+            }
+
+            function hideDetails() {
+                document.getElementById('details-panel').style.display = 'none';
+            }
+
+            function setupEventListeners() {
+                // Zoom controls
+                document.getElementById('btn-zoom-in').addEventListener('click', () => {
+                    cy.zoom(cy.zoom() * 1.2);
+                });
+
+                document.getElementById('btn-zoom-out').addEventListener('click', () => {
+                    cy.zoom(cy.zoom() / 1.2);
+                });
+
+                document.getElementById('btn-fit').addEventListener('click', () => {
+                    cy.fit(30);
+                });
+
+                document.getElementById('btn-reset').addEventListener('click', () => {
+                    applyLayout(document.getElementById('layout-select').value);
+                });
+
+                // Handle container resize
+                const cardBody = document.querySelector('.topology-card-body');
+                if (cardBody) {
+                    const resizeObserver = new ResizeObserver(() => {
+                        if (cy) {
+                            cy.resize();
+                            cy.fit(30);
+                        }
+                    });
+                    resizeObserver.observe(cardBody);
+                }
+
+                // Show/hide DCs
+                document.getElementById('show-dcs').addEventListener('change', function() {
+                    const dcs = cy.nodes('[type="dc"]');
+                    if (this.checked) {
+                        dcs.removeClass('hidden');
+                    } else {
+                        dcs.addClass('hidden');
+                    }
+                });
+
+                // Show/hide link labels
+                document.getElementById('show-link-labels').addEventListener('change', function() {
+                    const edges = cy.edges();
+                    if (this.checked) {
+                        edges.removeClass('hide-label');
+                    } else {
+                        edges.addClass('hide-label');
+                    }
+                });
+
+                // Layout selection
+                document.getElementById('layout-select').addEventListener('change', function() {
+                    applyLayout(this.value);
+                });
+
+                // Close details panel
+                document.getElementById('close-details').addEventListener('click', hideDetails);
+            }
+
+            /**
+             * Apply a layout by recalculating positions and animating to them.
+             */
+            function applyLayout(layoutName) {
+                console.log('[Topology] Applying layout:', layoutName);
+
+                // Calculate new positions based on layout type
+                let positions;
+                switch (layoutName) {
+                    case 'grid':
+                        positions = calculateGridPositions(topologyData);
+                        break;
+                    case 'circle':
+                        positions = calculateCirclePositions(topologyData);
+                        break;
+                    case 'concentric':
+                        positions = calculateConcentricPositions(topologyData);
+                        break;
+                    case 'cose':
+                    case 'breadthfirst':
+                    default:
+                        // For cose and breadthfirst, use Cytoscape's built-in layout
+                        // but run it only on DCs to keep sites from spreading
+                        applyBuiltInLayout(layoutName);
+                        return;
+                }
+
+                // Animate nodes to new positions
+                cy.nodes('[type="dc"]').forEach(node => {
+                    const dcId = node.id();
+                    if (positions.dcs[dcId]) {
+                        node.animate({
+                            position: positions.dcs[dcId],
+                            duration: 500,
+                            easing: 'ease-in-out'
+                        });
+                    }
+                });
+
+                // Fit to view after animation
+                setTimeout(() => {
+                    cy.fit(30);
+                }, 550);
+            }
+
+            /**
+             * Apply Cytoscape's built-in layout algorithms with optimized settings.
+             */
+            function applyBuiltInLayout(layoutName) {
+                const layoutOptions = {
+                    name: layoutName,
+                    animate: true,
+                    animationDuration: 500,
+                    fit: true,
+                    padding: 30,
+                    nodeDimensionsIncludeLabels: false
+                };
+
+                switch (layoutName) {
+                    case 'cose':
+                        // Use more aggressive repulsion to prevent overlap
+                        layoutOptions.nodeRepulsion = function(node) {
+                            return node.data('type') === 'site' ? 100000 : 8000;
+                        };
+                        layoutOptions.nodeOverlap = 50;
+                        layoutOptions.idealEdgeLength = function(edge) { return 300; };
+                        layoutOptions.edgeElasticity = function(edge) { return 50; };
+                        layoutOptions.nestingFactor = 2.0;
+                        layoutOptions.gravity = 0.15;
+                        layoutOptions.numIter = 2000;
+                        layoutOptions.initialTemp = 400;
+                        layoutOptions.coolingFactor = 0.98;
+                        layoutOptions.minTemp = 1.0;
+                        layoutOptions.componentSpacing = 200;
+                        break;
+                    case 'breadthfirst':
+                        layoutOptions.directed = false;
+                        layoutOptions.spacingFactor = 2.5;
+                        layoutOptions.avoidOverlap = true;
+                        layoutOptions.maximal = true;
+                        layoutOptions.grid = true;
+                        break;
+                }
+
+                cy.layout(layoutOptions).run();
+            }
+        })();
+    </script>
+}

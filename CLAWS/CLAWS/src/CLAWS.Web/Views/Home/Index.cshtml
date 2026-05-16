@@ -1,0 +1,217 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-database-up"></i> CLAWS
+        </h1>
+        <p class="lead">
+            Upload, validate, and import data from CollectNTFSPerms and ADInventory into the central SQL Server database.
+        </p>
+    </div>
+</div>
+
+@if (Model.IsDownloadAvailable || Model.IsADInventoryDownloadAvailable)
+{
+    <div class="row mt-3">
+        @if (Model.IsDownloadAvailable)
+        {
+            <div class="@(Model.IsADInventoryDownloadAvailable ? "col-md-6" : "col-12")">
+                <div class="alert alert-info h-100 d-flex flex-column">
+                    <div class="d-flex align-items-start justify-content-between flex-grow-1">
+                        <div>
+                            <i class="bi bi-folder-symlink me-2"></i>
+                            <strong>CollectNTFSPerms Tool</strong>
+                            <div class="small mt-1" style="margin-left: 1.85rem;">
+                                Download the data collection tool to gather NTFS permissions from your file servers.
+                            </div>
+                            @if (Model.DownloadMetadata != null)
+                            {
+                                <div class="text-muted small" style="margin-left: 1.85rem;">
+                                    @if (!string.IsNullOrEmpty(Model.DownloadMetadata.Version))
+                                    {
+                                        <span>Version: @Model.DownloadMetadata.Version</span>
+                                    }
+                                    @if (Model.DownloadMetadata.ReleaseDate.HasValue)
+                                    {
+                                        if (!string.IsNullOrEmpty(Model.DownloadMetadata.Version))
+                                        {
+                                            <span class="mx-2">|</span>
+                                        }
+                                        <span>Released: @Model.DownloadMetadata.ReleaseDate.Value.ToString("MMMM d, yyyy")</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="mt-auto pt-2 text-center">
+                        <a href="~/downloads/CollectNTFSPerms.zip" class="btn btn-info" download>
+                            <i class="bi bi-file-earmark-zip"></i> Download CollectNTFSPerms.zip
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (Model.IsADInventoryDownloadAvailable)
+        {
+            <div class="@(Model.IsDownloadAvailable ? "col-md-6" : "col-12")">
+                <div class="alert alert-success h-100 d-flex flex-column">
+                    <div class="d-flex align-items-start justify-content-between flex-grow-1">
+                        <div>
+                            <i class="bi bi-diagram-3 me-2"></i>
+                            <strong>ADInventory Module</strong>
+                            <div class="small mt-1" style="margin-left: 1.85rem;">
+                                Download the PowerShell module to collect Active Directory inventory data.
+                            </div>
+                            @if (Model.ADInventoryMetadata != null)
+                            {
+                                <div class="text-muted small" style="margin-left: 1.85rem;">
+                                    @if (!string.IsNullOrEmpty(Model.ADInventoryMetadata.Version))
+                                    {
+                                        <span>Version: @Model.ADInventoryMetadata.Version</span>
+                                    }
+                                    @if (Model.ADInventoryMetadata.ReleaseDate.HasValue)
+                                    {
+                                        if (!string.IsNullOrEmpty(Model.ADInventoryMetadata.Version))
+                                        {
+                                            <span class="mx-2">|</span>
+                                        }
+                                        <span>Released: @Model.ADInventoryMetadata.ReleaseDate.Value.ToString("MMMM d, yyyy")</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="mt-auto pt-2 text-center">
+                        <a href="~/downloads/ADInventory.zip" class="btn btn-success" download>
+                            <i class="bi bi-file-earmark-zip"></i> Download ADInventory.zip
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center d-flex flex-column">
+                <i class="bi bi-cloud-upload display-4 text-primary mb-3"></i>
+                <h5 class="card-title">Upload</h5>
+                <p class="card-text">
+                    Upload a ZIP file containing a SQLite database from CollectNTFSPerms or ADInventory.
+                </p>
+                <a asp-controller="Upload" asp-action="Index" class="btn btn-primary mt-auto @(Model.IsDbConfigured ? "" : "disabled")">
+                    <i class="bi bi-upload"></i> Upload File
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center d-flex flex-column">
+                <i class="bi bi-list-check display-4 text-success mb-3"></i>
+                <h5 class="card-title">Status</h5>
+                <p class="card-text">
+                    View the status of your uploads and imports.
+                </p>
+                <a asp-controller="Status" asp-action="Index" class="btn btn-success mt-auto">
+                    <i class="bi bi-eye"></i> View Status
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center d-flex flex-column">
+                <i class="bi bi-gear display-4 text-secondary mb-3"></i>
+                <h5 class="card-title">Administration</h5>
+                <p class="card-text">
+                    Configure settings, manage API keys, and view system status.
+                </p>
+                <a asp-controller="Admin" asp-action="Index" class="btn btn-secondary mt-auto">
+                    <i class="bi bi-gear"></i> Admin Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <h3>How It Works</h3>
+        <div class="row mt-3">
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <strong>1</strong>
+                    </div>
+                    <h5 class="mt-2">Upload</h5>
+                    <p class="small text-muted">Upload your ZIP file containing a SQLite database (CollectNTFSPerms or ADInventory).</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <strong>2</strong>
+                    </div>
+                    <h5 class="mt-2">Validate</h5>
+                    <p class="small text-muted">The system validates the ZIP structure and database schema.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <strong>3</strong>
+                    </div>
+                    <h5 class="mt-2">Queue</h5>
+                    <p class="small text-muted">Valid uploads are queued for background processing.</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <strong>4</strong>
+                    </div>
+                    <h5 class="mt-2">Import</h5>
+                    <p class="small text-muted">Data is imported into the central SQL Server database.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.IsDbConfigured)
+{
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Setup Required</h5>
+                <p>
+                    The application is not fully configured. Please complete the following steps:
+                </p>
+                <ol>
+                    <li>
+                        <a asp-controller="Admin" asp-action="Configuration">Configure SQL Server connection</a>
+                    </li>
+                    @if (!Model.IsAuthConfigured)
+                    {
+                        <li>
+                            <a asp-controller="Admin" asp-action="Configuration">Configure authorization groups</a>
+                        </li>
+                    }
+                    @if (Model.IsUsingAppDirectory)
+                    {
+                        <li>
+                            <a asp-controller="Admin" asp-action="Configuration">Configure dedicated storage volume</a>
+                        </li>
+                    }
+                </ol>
+            </div>
+        </div>
+    </div>
+}

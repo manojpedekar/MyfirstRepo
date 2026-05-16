@@ -1,0 +1,151 @@
+CREATE TABLE app__ACE (
+    InventoryID TEXT NOT NULL,
+    LocalACEID INTEGER NOT NULL,
+    LocalFolderID INTEGER NOT NULL,
+    FileSystemRightsMask INTEGER NOT NULL,
+    FileSystemRights TEXT NOT NULL,
+    AccessControlType INTEGER NOT NULL,
+    IdentitySID TEXT NOT NULL,
+    IsInherited BOOLEAN NOT NULL,
+    InheritanceFlags INTEGER NOT NULL,
+    PropagationFlags INTEGER NOT NULL,
+    InheritedFromLocalID INTEGER,
+    PRIMARY KEY (InventoryID, LocalACEID),
+    FOREIGN KEY (InventoryID, LocalFolderID) REFERENCES app__Folders(InventoryID, LocalFolderID),
+    FOREIGN KEY (InventoryID) REFERENCES app__CollectionInfo(InventoryID),
+    FOREIGN KEY (InventoryID, InheritedFromLocalID) REFERENCES app__Folders(InventoryID, LocalFolderID)
+)
+
+CREATE TABLE "app__ACL" (
+	"InventoryID"	TEXT NOT NULL,
+	"LocalACLID"	INTEGER NOT NULL,
+	"LocalFolderID"	INTEGER NOT NULL,
+	"Owner"	TEXT,
+	"Group"	TEXT,
+	"AreAccessRulesProtected"	BOOLEAN NOT NULL,
+	"AreAuditRulesProtected"	BOOLEAN NOT NULL,
+	"AreAccessRulesCanonical"	BOOLEAN NOT NULL,
+	"AreAuditRulesCanonical"	BOOLEAN NOT NULL,
+	PRIMARY KEY("InventoryID","LocalACLID"),
+	FOREIGN KEY("InventoryID") REFERENCES "app__CollectionInfo"("InventoryID"),
+	FOREIGN KEY("LocalFolderID") REFERENCES "app__Folders"("LocalFolderID")
+)
+
+CREATE TABLE "app__CollectionInfo" (
+	"InventoryID"	TEXT,
+	"ComputerName"	TEXT NOT NULL,
+	"DomainName"	TEXT NOT NULL,
+	"CollectionDateTime"	TEXT NOT NULL,
+	"ApplicationVersion"	TEXT NOT NULL,
+	"ApplicationBuild"	TEXT NOT NULL,
+	"IsAdmin"	BOOLEAN NOT NULL,
+	"Who"	TEXT NOT NULL,
+	"HardwareConcurrency"	INTEGER NOT NULL,
+	"ThreadCount"	INTEGER NOT NULL,
+	"StartTime"	TEXT NOT NULL,
+	"EndTime"	TEXT,
+	"TotalRuntime"	INTEGER,
+	"FoldersProcessed"	INTEGER,
+	"FoldersWithErrors"	INTEGER,
+	"PeakQueueSize"	INTEGER,
+	"MemoryUsageMB"	INTEGER,
+	"OutputPath"	TEXT,
+	"ScanPath"	TEXT NOT NULL,
+	"RemoteComputer"	BOOLEAN NOT NULL DEFAULT 0,
+	"ExplicitOnly"	BOOLEAN NOT NULL DEFAULT 0,
+	PRIMARY KEY("InventoryID","ComputerName")
+)
+
+CREATE TABLE app__Disks (
+    InventoryID TEXT NOT NULL,
+    DiskID INTEGER NOT NULL,
+    DeviceID TEXT NOT NULL,
+    Model TEXT,
+    InterfaceType TEXT,
+    Size BIGINT NOT NULL,
+    PartitionStyle TEXT,
+    IsBoot BOOLEAN NOT NULL,
+    IsSystem BOOLEAN NOT NULL,
+    IsReadOnly BOOLEAN NOT NULL,
+    Status TEXT NOT NULL,
+    PRIMARY KEY (InventoryID, DiskID),
+    FOREIGN KEY (InventoryID) REFERENCES app__CollectionInfo(InventoryID)
+)
+
+CREATE TABLE app__EventLog (
+    EventID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Timestamp TEXT NOT NULL,             -- ISO 8601 UTC timestamp (e.g., 2025-05-16T14:23:45Z)
+    Severity TEXT NOT NULL,              -- INFO, WARNING, ERROR, DEBUG, etc.
+    Source TEXT NOT NULL,                -- Module/function/thread name
+    Message TEXT NOT NULL,               -- Human-readable message
+    Path TEXT,                           -- Optional: Folder or file path
+    ErrorCode INTEGER,                   -- Optional: Windows error code or app-specific
+    ThreadID INTEGER,                    -- Optional: Useful for multi-threaded logging
+    AdditionalData TEXT                  -- Optional JSON blob (must be valid JSON if used)
+)
+
+CREATE TABLE app__Folders (
+    InventoryID TEXT NOT NULL,
+    LocalFolderID INTEGER NOT NULL,
+	  Path TEXT NOT NULL,
+    PRIMARY KEY (InventoryID, LocalFolderID),
+    FOREIGN KEY (InventoryID) REFERENCES app__CollectionInfo(InventoryID)
+)
+
+CREATE TABLE app__SMBShareAccess (
+    InventoryID TEXT NOT NULL,
+    ShareID INTEGER NOT NULL,
+    AccessID INTEGER NOT NULL,
+    IdentityReference TEXT NOT NULL,
+    IdentitySID TEXT NOT NULL,
+    AccessType TEXT NOT NULL,
+    AccessMask INTEGER NOT NULL,
+    IsInherited BOOLEAN NOT NULL,
+    PRIMARY KEY (InventoryID, ShareID, AccessID),
+    FOREIGN KEY (InventoryID) REFERENCES app__CollectionInfo(InventoryID),
+    FOREIGN KEY (InventoryID, ShareID) REFERENCES app__SMBShares(InventoryID, ShareID)
+)
+
+CREATE TABLE app__SMBShares (
+    InventoryID TEXT NOT NULL,
+    ShareID INTEGER NOT NULL,
+    Name TEXT NOT NULL,
+    Path TEXT NOT NULL,
+    Description TEXT,
+    Type TEXT NOT NULL,
+    AllowMaximum BOOLEAN NOT NULL,
+    MaximumAllowed INTEGER,
+    IsHidden BOOLEAN NOT NULL,
+    IsSpecial BOOLEAN NOT NULL,
+    Status TEXT NOT NULL,
+    AvailabilityType TEXT NOT NULL,
+    FolderEnumerationMode TEXT NOT NULL,
+    CachingMode TEXT NOT NULL,
+    LeasingMode TEXT NOT NULL,
+    VolumeID INTEGER,
+    PRIMARY KEY (InventoryID, ShareID),
+    FOREIGN KEY (InventoryID) REFERENCES app__CollectionInfo(InventoryID),
+    FOREIGN KEY (InventoryID, VolumeID) REFERENCES app__Volumes(InventoryID, VolumeID)
+)
+
+CREATE TABLE app__Volumes (
+    InventoryID TEXT NOT NULL,
+    VolumeID INTEGER NOT NULL,
+    DiskID INTEGER NOT NULL,
+    DriveLetter TEXT,
+    Label TEXT,
+    FileSystem TEXT,
+    Size BIGINT NOT NULL,
+    FreeSpace BIGINT NOT NULL,
+    IsSystem BOOLEAN NOT NULL,
+    IsReadOnly BOOLEAN NOT NULL,
+    Status TEXT NOT NULL,
+    UniqueID TEXT,
+    AllocationUnitSize BIGINT,
+    DriveType INTEGER,
+    Info TEXT,
+    PRIMARY KEY (InventoryID, VolumeID),
+    FOREIGN KEY (InventoryID) REFERENCES app__CollectionInfo(InventoryID),
+    FOREIGN KEY (InventoryID, DiskID) REFERENCES app__Disks(InventoryID, DiskID)
+)
+

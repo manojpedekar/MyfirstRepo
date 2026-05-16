@@ -1,0 +1,227 @@
+@model CLAWS.Web.Models.BannerMessagesViewModel
+@{
+    ViewData["Title"] = "Banner Messages";
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-megaphone"></i> Banner Messages
+</h1>
+
+@if (!Model.IsDbConfigured)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Database not configured.</strong> Banner messages require a database connection.
+        <a asp-action="Configuration">Configure SQL Server</a> to enable this feature.
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <span class="text-muted">
+            @Model.Messages.Count message(s) total,
+            @Model.Messages.Count(m => m.IsActive) currently active
+        </span>
+    </div>
+    <a asp-action="CreateBannerMessage" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create New Message
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list"></i> All Banner Messages
+    </div>
+    <div class="card-body">
+        @if (Model.Messages.Count == 0)
+        {
+            <p class="text-muted mb-0">No banner messages have been created yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Order</th>
+                            <th style="width: 80px;">Type</th>
+                            <th>Title</th>
+                            <th>Message</th>
+                            <th style="width: 100px;">Schedule</th>
+                            <th style="width: 100px;">Status</th>
+                            <th style="width: 180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var message in Model.Messages)
+                        {
+                            <tr class="@(!message.IsEnabled ? "table-secondary" : "")">
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">@message.DisplayOrder</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@message.TypeCssClass">
+                                        <i class="bi @message.TypeIcon"></i> @message.MessageType
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>@message.Title</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        Created <span data-utc="@message.CreatedAt.ToString("o")" data-format="short">@message.CreatedAt.ToString("g")</span> by @message.CreatedBy
+                                    </small>
+                                </td>
+                                <td>
+                                    <span title="@message.Message">
+                                        @(message.Message.Length > 100 ? message.Message.Substring(0, 100) + "..." : message.Message)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (message.StartDate.HasValue || message.EndDate.HasValue)
+                                    {
+                                        <small>
+                                            @if (message.StartDate.HasValue)
+                                            {
+                                                <span title="Start Date">
+                                                    <i class="bi bi-calendar-event"></i> <span data-utc="@message.StartDate.Value.ToString("o")" data-format="date">@message.StartDate.Value.ToString("d")</span>
+                                                </span>
+                                            }
+                                            @if (message.EndDate.HasValue)
+                                            {
+                                                <span title="End Date">
+                                                    <i class="bi bi-calendar-x"></i> <span data-utc="@message.EndDate.Value.ToString("o")" data-format="date">@message.EndDate.Value.ToString("d")</span>
+                                                </span>
+                                            }
+                                        </small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Always</small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (message.IsActive)
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Active
+                                        </span>
+                                    }
+                                    else if (!message.IsEnabled)
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-pause-circle"></i> Disabled
+                                        </span>
+                                    }
+                                    else if (message.StartDate.HasValue && message.StartDate > DateTime.UtcNow)
+                                    {
+                                        <span class="badge bg-info">
+                                            <i class="bi bi-clock"></i> Scheduled
+                                        </span>
+                                    }
+                                    else if (message.EndDate.HasValue && message.EndDate < DateTime.UtcNow)
+                                    {
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-calendar-x"></i> Expired
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="EditBannerMessage" asp-route-id="@message.BannerMessageId"
+                                           class="btn btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+
+                                        @if (message.IsEnabled)
+                                        {
+                                            <form asp-action="ToggleBannerMessage" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@message.BannerMessageId" />
+                                                <input type="hidden" name="enabled" value="false" />
+                                                <button type="submit" class="btn btn-outline-warning" title="Disable">
+                                                    <i class="bi bi-pause-circle"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="ToggleBannerMessage" method="post" class="d-inline">
+                                                <input type="hidden" name="id" value="@message.BannerMessageId" />
+                                                <input type="hidden" name="enabled" value="true" />
+                                                <button type="submit" class="btn btn-outline-success" title="Enable">
+                                                    <i class="bi bi-play-circle"></i>
+                                                </button>
+                                            </form>
+                                        }
+
+                                        <form asp-action="DeleteBannerMessage" method="post" class="d-inline"
+                                              onsubmit="return confirm('Are you sure you want to delete this banner message?');">
+                                            <input type="hidden" name="id" value="@message.BannerMessageId" />
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-eye"></i> Preview Active Banners
+    </div>
+    <div class="card-body">
+        @{
+            var activeMessages = Model.Messages.Where(m => m.IsActive).ToList();
+        }
+        @if (activeMessages.Count == 0)
+        {
+            <p class="text-muted mb-0">No active banner messages to display.</p>
+        }
+        else
+        {
+            <p class="text-muted mb-3">This is how the active banners will appear to users:</p>
+            @foreach (var message in activeMessages)
+            {
+                var bannerClass = message.MessageType switch
+                {
+                    "Info" => "alert-info",
+                    "Warning" => "warning-banner",
+                    "Error" => "danger-banner",
+                    _ => "alert-secondary"
+                };
+
+                @if (message.MessageType == "Info")
+                {
+                    <div class="alert alert-info mb-2">
+                        <i class="bi @message.TypeIcon"></i>
+                        <strong>@message.Title:</strong> @message.Message
+                    </div>
+                }
+                else if (message.MessageType == "Warning")
+                {
+                    <div class="warning-banner mb-2" style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 0.5rem 1rem; border-radius: 0.25rem;">
+                        <i class="bi @message.TypeIcon"></i>
+                        <strong>@message.Title:</strong> @message.Message
+                    </div>
+                }
+                else if (message.MessageType == "Error")
+                {
+                    <div class="danger-banner mb-2" style="background-color: #f8d7da; border: 1px solid #dc3545; padding: 0.5rem 1rem; border-radius: 0.25rem;">
+                        <i class="bi @message.TypeIcon"></i>
+                        <strong>@message.Title:</strong> @message.Message
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-outline-secondary mt-3">
+    <i class="bi bi-arrow-left"></i> Back to Dashboard
+</a>

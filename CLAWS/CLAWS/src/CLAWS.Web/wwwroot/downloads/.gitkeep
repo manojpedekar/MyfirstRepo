@@ -1,0 +1,11 @@
+# This folder contains downloadable files for the CollectNTFSPerms application.
+#
+# To enable the download button on the home page:
+# 1. Place CollectNTFSPerms.zip here
+# 2. Create collectntfsperms.json with version and release date metadata
+#
+# Example collectntfsperms.json:
+# {
+#   "version": "1.0.0",
+#   "releasedate": "2025-01-15"
+# }

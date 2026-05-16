@@ -1,0 +1,139 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+    Layout = "_Layout";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-person-badge"></i> Sign In
+                </h4>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> @Model.ErrorMessage
+                    </div>
+                }
+
+                <form asp-action="Login" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+
+                    @if (Model.AllowKeymasterFallback)
+                    {
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="hidden" id="useKeymasterHidden" name="useKeymaster" value="@(Model.UseKeymaster ? "true" : "false")">
+                                <input class="form-check-input" type="checkbox" id="useKeymasterCheckbox"
+                                       @(Model.UseKeymaster ? "checked" : "") onchange="toggleKeymasterMode()">
+                                <label class="form-check-label" for="useKeymasterCheckbox">
+                                    <i class="bi bi-key"></i> Login as <strong>@Model.KeymasterUsername</strong> (local admin)
+                                </label>
+                            </div>
+                        </div>
+                        <hr class="my-3" />
+                    }
+
+                    <div class="mb-3" id="usernameSection">
+                        <label for="username" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="username" name="username"
+                                   value="@Model.Username" placeholder="Enter your username"
+                                   autocomplete="username" autofocus>
+                        </div>
+                        <div class="form-text">
+                            @if (!string.IsNullOrEmpty(Model.Domain))
+                            {
+                                <text>Default domain: <strong>@Model.Domain</strong>. </text>
+                            }
+                            <text>You may also use <em>DOMAIN\username</em> or <em>user@domain.com</em> format.</text>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" id="password" name="password"
+                                   placeholder="Enter your password"
+                                   autocomplete="current-password" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="rememberMe" name="rememberMe" value="true">
+                        <label class="form-check-label" for="rememberMe">Remember me</label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> Sign In
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center text-muted small">
+                @if (Model.IsLdapConfigured)
+                {
+                    @if (Model.Port == 636)
+                    {
+                        <span><i class="bi bi-shield-lock-fill text-success"></i> LDAPS Authentication</span>
+                    }
+                    else
+                    {
+                        <span><i class="bi bi-shield-exclamation text-warning"></i> LDAP Authentication</span>
+                    }
+                }
+                else if (Model.AllowKeymasterFallback)
+                {
+                    <span><i class="bi bi-key"></i> Keymaster Authentication Only</span>
+                }
+                else
+                {
+                    <span><i class="bi bi-exclamation-triangle text-warning"></i> Authentication not configured</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleKeymasterMode() {
+            var checkbox = document.getElementById('useKeymasterCheckbox');
+            var hiddenField = document.getElementById('useKeymasterHidden');
+            var usernameSection = document.getElementById('usernameSection');
+            var usernameInput = document.getElementById('username');
+            var passwordInput = document.getElementById('password');
+
+            // Update hidden field value to match checkbox state
+            hiddenField.value = checkbox.checked ? 'true' : 'false';
+
+            if (checkbox.checked) {
+                // Keymaster mode: hide username field
+                usernameSection.style.display = 'none';
+                usernameInput.removeAttribute('required');
+                usernameInput.value = '';
+                passwordInput.focus();
+            } else {
+                // Normal mode: show username field
+                usernameSection.style.display = 'block';
+                usernameInput.focus();
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            var checkbox = document.getElementById('useKeymasterCheckbox');
+            if (checkbox && checkbox.checked) {
+                toggleKeymasterMode();
+            }
+        });
+    </script>
+}

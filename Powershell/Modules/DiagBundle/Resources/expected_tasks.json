@@ -1,0 +1,10 @@
+{
+    "schema_version": "1.0",
+    "description": "Scheduled tasks expected to exist on every healthy host in this org. Absence of any name in this list is flagged as a warning in manifest.collection_errors. Data-driven so image owners can extend without code changes. Initial seed (2026-05-11) per decision D8 in docs/plans/2026-05-11-collector-gaps-cloudbaseinit-salt.md: SaltHighState only -- the only task whose absence has confirmed evidence of causing real harm in production (cloudbase-init's 02-highstate.ps1 calls Start-ScheduledTask -TaskName SaltHighState; when missing, highstate never runs).",
+    "expected_tasks": [
+        {
+            "name": "SaltHighState",
+            "rationale": "Cloudbase-Init's 02-highstate.ps1 invokes this task at first boot to trigger salt-call state.highstate. Missing on the host means highstate is never run, leaving the server in a half-built post-Cloudbase-Init state. Bug class: image build pipeline regression."
+        }
+    ]
+}

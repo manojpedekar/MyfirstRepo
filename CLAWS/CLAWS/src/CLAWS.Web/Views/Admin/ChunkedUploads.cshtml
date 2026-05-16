@@ -1,0 +1,209 @@
+@model ChunkedUploadsViewModel
+@{
+    ViewData["Title"] = "Active Chunked Uploads";
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-cloud-upload"></i> Active Chunked Uploads
+    <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="window.location.reload()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+</h1>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="mb-0">@Model.TotalActiveSessions</h3>
+                <small class="text-muted">Active Sessions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="mb-0">@ChunkedUploadsViewModel.FormatBytes(Model.TotalPendingBytes)</h3>
+                <small class="text-muted">Pending Upload Data</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="mb-0">@Model.Settings.MaxConcurrentUploadsGlobal / @Model.Settings.MaxConcurrentUploadsPerUser</h3>
+                <small class="text-muted">Limits (Global / Per User)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Settings.Enabled)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Chunked uploads are disabled.</strong>
+        Enable them in <a asp-action="Configuration">Configuration</a> to allow large file uploads.
+    </div>
+}
+
+@if (Model.ActiveUploads.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        No active chunked upload sessions.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>File</th>
+                    <th>User</th>
+                    <th>Progress</th>
+                    <th>Started</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var upload in Model.ActiveUploads)
+                {
+                    var isExpiringSoon = upload.IsExpiringSoon;
+                    var isStalled = upload.IsStalled;
+                    var rowClass = isExpiringSoon ? "table-warning" : (isStalled ? "table-danger" : "");
+                    <tr class="@rowClass">
+                        <td>
+                            <strong>@upload.FileName</strong><br />
+                            <small class="text-muted">@ChunkedUploadsViewModel.FormatBytes(upload.FileSize)</small>
+                        </td>
+                        <td>
+                            @upload.UploadedBy<br />
+                            <small class="text-muted">@upload.SourceIp</small>
+                        </td>
+                        <td>
+                            <div class="progress" style="width: 150px; height: 20px;">
+                                <div class="progress-bar @(upload.PercentComplete == 100 ? "bg-success" : "")"
+                                     role="progressbar"
+                                     style="width: @upload.PercentComplete%"
+                                     aria-valuenow="@upload.PercentComplete"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                    @upload.PercentComplete.ToString("F1")%
+                                </div>
+                            </div>
+                            <small class="text-muted">@upload.ReceivedChunks / @upload.TotalChunks chunks</small>
+                        </td>
+                        <td>
+                            @upload.CreatedAt.ToString("g")<br />
+                            <small class="text-muted">@((DateTime.UtcNow - upload.CreatedAt).TotalMinutes.ToString("F0")) min ago</small>
+                        </td>
+                        <td>
+                            @upload.ExpiresAt.ToString("g")<br />
+                            @if (upload.TimeUntilExpiration.TotalMinutes > 0)
+                            {
+                                <small class="@(isExpiringSoon ? "text-warning fw-bold" : "text-muted")">
+                                    @upload.TimeUntilExpiration.ToString(@"h\:mm") remaining
+                                </small>
+                            }
+                            else
+                            {
+                                <small class="text-danger fw-bold">EXPIRED</small>
+                            }
+                        </td>
+                        <td>
+                            @if (isStalled)
+                            {
+                                <span class="badge bg-danger">Stalled</span>
+                                <br />
+                                <small class="text-muted">Last activity: @((DateTime.UtcNow - upload.LastActivityAt).TotalMinutes.ToString("F0")) min ago</small>
+                            }
+                            else if (isExpiringSoon)
+                            {
+                                <span class="badge bg-warning text-dark">Expiring Soon</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                        </td>
+                        <td>
+                            <form asp-action="CancelChunkedUpload" asp-route-uploadId="@upload.UploadId" method="post" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Are you sure you want to cancel this upload? The partial upload will be deleted.')">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-gear"></i> Chunked Upload Settings
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Enabled</td>
+                        <td><span class="badge @(Model.Settings.Enabled ? "bg-success" : "bg-secondary")">@(Model.Settings.Enabled ? "Yes" : "No")</span></td>
+                    </tr>
+                    <tr>
+                        <td>Chunk Size</td>
+                        <td>@ChunkedUploadsViewModel.FormatBytes(Model.Settings.ChunkSizeBytes)</td>
+                    </tr>
+                    <tr>
+                        <td>Chunked Threshold</td>
+                        <td>@ChunkedUploadsViewModel.FormatBytes(Model.Settings.ChunkedThresholdBytes)</td>
+                    </tr>
+                    <tr>
+                        <td>Max Concurrent (Per User)</td>
+                        <td>@Model.Settings.MaxConcurrentUploadsPerUser</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Max Concurrent (Global)</td>
+                        <td>@Model.Settings.MaxConcurrentUploadsGlobal</td>
+                    </tr>
+                    <tr>
+                        <td>Session Expiration</td>
+                        <td>@Model.Settings.SessionExpirationHours hours</td>
+                    </tr>
+                    <tr>
+                        <td>Expiration Warning</td>
+                        <td>@Model.Settings.ExpirationWarningMinutes minutes before</td>
+                    </tr>
+                    <tr>
+                        <td>Max Chunk Retries</td>
+                        <td>@Model.Settings.MaxChunkRetries</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <p class="text-muted small mb-0">
+            <i class="bi bi-info-circle"></i>
+            Chunked uploads allow files larger than 4 GB to be uploaded by splitting them into smaller pieces.
+            Files smaller than the threshold use standard uploads.
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Auto-refresh every 30 seconds
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+</script>
+}

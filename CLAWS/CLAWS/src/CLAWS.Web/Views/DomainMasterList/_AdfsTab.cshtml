@@ -1,0 +1,125 @@
+@model DomainEditViewModel
+@* ADFS tab - AD FS and Device Registration Service configuration *@
+@{
+    var adfsServices = Model.AdfsConfiguration?.Services?.Where(s => s.ServiceType == "ADFS").ToList() ?? new List<AdfsServiceInfo>();
+    var drsServices = Model.AdfsConfiguration?.Services?.Where(s => s.ServiceType == "DRS").ToList() ?? new List<AdfsServiceInfo>();
+}
+
+<div class="tab-pane fade" id="adfs-pane" role="tabpanel" aria-labelledby="adfs-tab">
+    @if (Model.AdfsConfiguration == null || !Model.AdfsConfiguration.HasConfiguration)
+    {
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-shield-lock fs-1 mb-2 d-block"></i>
+            <p class="mb-1">No AD FS configuration found.</p>
+            <small>AD FS may not be configured in this forest.</small>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info py-2 mb-3">
+            <i class="bi bi-info-circle"></i>
+            <small>Forest-level configuration from <strong>@Model.AdfsConfiguration.ForestName</strong></small>
+        </div>
+
+        if (adfsServices.Any())
+        {
+            <!-- AD FS Services Card -->
+            <div class="card mb-3">
+                <div class="card-header bg-primary-subtle py-2">
+                    <i class="bi bi-shield-check"></i> AD FS Services
+                    <span class="badge bg-primary ms-1">@adfsServices.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var service in adfsServices)
+                    {
+                        <div class="border-bottom p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>@(service.FederationServiceName ?? service.DomainName ?? service.ServiceName ?? "AD FS")</strong>
+                                    @if (service.HasAzureIntegration)
+                                    {
+                                        <span class="badge bg-info ms-2" title="Azure AD Integrated">
+                                            <i class="bi bi-cloud"></i> Azure AD
+                                        </span>
+                                    }
+                                </div>
+                                <span class="badge bg-@service.TypeBadgeClass">@service.ServiceType</span>
+                            </div>
+                            <table class="table table-sm table-borderless mb-0 small">
+                                @if (!string.IsNullOrEmpty(service.ServiceBindingInfo))
+                                {
+                                    <tr>
+                                        <th class="text-muted ps-0" style="width: 120px;">Service URL</th>
+                                        <td>
+                                            <code>@service.ServiceBindingInfo</code>
+                                        </td>
+                                    </tr>
+                                }
+                                @if (!string.IsNullOrEmpty(service.AzureTenantId))
+                                {
+                                    <tr>
+                                        <th class="text-muted ps-0">Azure Tenant</th>
+                                        <td><code class="text-truncate d-inline-block" style="max-width: 250px;" title="@service.AzureTenantId">@service.AzureTenantId</code></td>
+                                    </tr>
+                                }
+                                @if (!string.IsNullOrEmpty(service.DomainName))
+                                {
+                                    <tr>
+                                        <th class="text-muted ps-0">Domain</th>
+                                        <td>@service.DomainName</td>
+                                    </tr>
+                                }
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        if (drsServices.Any())
+        {
+            <!-- Device Registration Service Card -->
+            <div class="card mb-3">
+                <div class="card-header bg-success-subtle py-2">
+                    <i class="bi bi-phone"></i> Device Registration Service
+                    <span class="badge bg-success ms-1">@drsServices.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var service in drsServices)
+                    {
+                        <div class="border-bottom p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>@(service.DomainName ?? service.ServiceName ?? "Device Registration")</strong>
+                                    @if (service.HasAzureIntegration)
+                                    {
+                                        <span class="badge bg-info ms-2" title="Azure AD Device Registration">
+                                            <i class="bi bi-cloud"></i> Azure AD
+                                        </span>
+                                    }
+                                </div>
+                                <span class="badge bg-@service.TypeBadgeClass">@service.ServiceType</span>
+                            </div>
+                            <table class="table table-sm table-borderless mb-0 small">
+                                @if (!string.IsNullOrEmpty(service.ServiceBindingInfo))
+                                {
+                                    <tr>
+                                        <th class="text-muted ps-0" style="width: 120px;">Endpoint</th>
+                                        <td><code>@service.ServiceBindingInfo</code></td>
+                                    </tr>
+                                }
+                                @if (!string.IsNullOrEmpty(service.DomainName))
+                                {
+                                    <tr>
+                                        <th class="text-muted ps-0">Domain</th>
+                                        <td>@service.DomainName</td>
+                                    </tr>
+                                }
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>

@@ -1,0 +1,889 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 13590,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "description": "",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 8,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "This list identifies systems that require updates to meet current patch levels. These systems pose a security vulnerability within the SS&C network.\n\nThe Windows Infrastructure team schedules patching sessions every Saturday to address these systems in batches of 10.\n\nThe panel labeled \"Week 1\" represents the current week's patching efforts. Weeks 2-4 are displayed to allow product teams to anticipate upcoming systems. This list is updated daily; thus, the lineup of systems may change. Please ensure to review it regularly.\n\nSystems will be brought up to the current standard and may require multiple reboots. Change controls will be created and reviewed weekly in the Change Advisory Board (CAB) meetings.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "builder",
+          "format": "table",
+          "rawSql": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Patching Backlog",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "description": "",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 12,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "We will provide an overview of how the update process will function here",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "builder",
+          "format": "table",
+          "rawSql": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Update Process outline",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerId"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FQDN"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 351
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Needed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 114
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT [ComputerId],[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer] )\r\nORDER BY [Needed] DESC\r\nOFFSET 0 ROWS\r\nFETCH NEXT 10 ROWS ONLY;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Week 1",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerId"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FQDN"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 351
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Needed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 114
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT [ComputerId],[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer] )\r\nORDER BY [Needed] DESC\r\nOFFSET 10 ROWS\r\nFETCH NEXT 10 ROWS ONLY;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Week 2",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Week 3 and Week 4",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerId"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FQDN"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 351
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Needed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 114
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT [ComputerId],[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer] )\r\nORDER BY [Needed] DESC\r\nOFFSET 20 ROWS\r\nFETCH NEXT 10 ROWS ONLY;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Week 3",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerId"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FQDN"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 351
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Needed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 105
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 114
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT [ComputerId],[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer] )\r\nORDER BY [Needed] DESC\r\nOFFSET 30 ROWS\r\nFETCH NEXT 10 ROWS ONLY;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Week 4",
+      "type": "table"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 5,
+      "panels": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unitScale": true
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ComputerId"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hidden",
+                    "value": true
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "FQDN"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "",
+                        "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 351
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Needed"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 105
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Failed"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 114
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 13,
+            "w": 24,
+            "x": 0,
+            "y": 33
+          },
+          "id": 11,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "10.3.0",
+          "targets": [
+            {
+              "dataset": "SUSDB",
+              "datasource": {
+                "type": "mssql",
+                "uid": "xLTWsaF7k"
+              },
+              "editorMode": "code",
+              "format": "table",
+              "rawQuery": true,
+              "rawSql": "SELECT [ComputerId],[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer])\r\n\t\tand [Needed] >= 10\r\nORDER BY [Needed] DESC\r\n",
+              "refId": "A",
+              "sql": {
+                "columns": [
+                  {
+                    "parameters": [],
+                    "type": "function"
+                  }
+                ],
+                "groupBy": [
+                  {
+                    "property": {
+                      "type": "string"
+                    },
+                    "type": "groupBy"
+                  }
+                ],
+                "limit": 50
+              }
+            }
+          ],
+          "title": "All Systems",
+          "type": "table"
+        }
+      ],
+      "title": "All Systems requiring more than 10 Updates",
+      "type": "row"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "WSUS Dashboard"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Backlog Patching Schedule",
+  "uid": "bcff20f9-2956-4dd5-a984-4bac58843171",
+  "version": 13,
+  "weekStart": ""
+}

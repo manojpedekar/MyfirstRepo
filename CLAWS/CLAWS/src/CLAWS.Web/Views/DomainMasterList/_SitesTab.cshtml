@@ -1,0 +1,119 @@
+@model DomainEditViewModel
+@* Sites tab - Sites & Services topology information *@
+
+<div class="tab-pane fade" id="sites-pane" role="tabpanel" aria-labelledby="sites-tab">
+    @if (Model.SitesAndServices == null || !Model.SitesAndServices.HasData)
+    {
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-geo-alt fs-1 mb-2 d-block"></i>
+            <p class="mb-1">No Sites & Services data available.</p>
+            <small>Ensure the ADInventory collection includes Sites & Services.</small>
+        </div>
+    }
+    else
+    {
+        <!-- Summary Cards Row -->
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card bg-light text-center h-100">
+                    <div class="card-body py-2">
+                        <div class="fs-4 fw-bold text-primary">@Model.SitesAndServices.SiteCount</div>
+                        <small class="text-muted">
+                            @if (Model.AdInventory?.CollectionId != null)
+                            {
+                                <a asp-controller="Topology" asp-action="Index"
+                                   asp-route-collectionId="@Model.AdInventory.CollectionId"
+                                   asp-route-domainId="@Model.Domain.DomainID"
+                                   class="text-decoration-none"
+                                   title="View Site Topology">
+                                    Sites <i class="bi bi-diagram-3 small"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                @:Sites
+                            }
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card bg-light text-center h-100">
+                    <div class="card-body py-2">
+                        <div class="fs-4 fw-bold text-success">@Model.SitesAndServices.SubnetCount</div>
+                        <small class="text-muted">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#subnetsModal" class="text-decoration-none">
+                                Subnets <i class="bi bi-box-arrow-up-right small"></i>
+                            </a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card bg-light text-center h-100">
+                    <div class="card-body py-2">
+                        <div class="fs-4 fw-bold text-info">@Model.SitesAndServices.SiteLinkCount</div>
+                        <small class="text-muted">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#siteLinksModal" class="text-decoration-none">
+                                Site Links <i class="bi bi-box-arrow-up-right small"></i>
+                            </a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card bg-light text-center h-100">
+                    <div class="card-body py-2">
+                        <div class="fs-4 fw-bold text-warning">@Model.SitesAndServices.DomainControllerCount</div>
+                        <small class="text-muted">Domain Controllers</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sites List -->
+        @if (Model.SitesAndServices.Sites.Count > 0)
+        {
+            <div class="card">
+                <div class="card-header bg-secondary-subtle py-2 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-geo-alt"></i> Sites</span>
+                    <span class="badge bg-secondary">@Model.SitesAndServices.Sites.Count</span>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                    @foreach (var site in Model.SitesAndServices.Sites)
+                    {
+                        <div class="list-group-item list-group-item-action py-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>@site.SiteName</strong>
+                                    @if (!string.IsNullOrEmpty(site.Description))
+                                    {
+                                        <br /><small class="text-muted">@site.Description</small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(site.Location))
+                                    {
+                                        <br /><small class="text-muted"><i class="bi bi-geo-alt-fill"></i> @site.Location</small>
+                                    }
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success" title="Subnets">@site.SubnetCount</span>
+                                    <span class="badge bg-warning text-dark" title="Domain Controllers">@site.DomainControllerCount <abbr title="Domain Controller">DC</abbr></span>
+                                    @if (site.GlobalCatalogCount > 0)
+                                    {
+                                        <span class="badge bg-info" title="Global Catalogs">@site.GlobalCatalogCount <abbr title="Global Catalog">GC</abbr></span>
+                                    }
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(site.InterSiteTopologyGenerator))
+                            {
+                                <small class="d-block text-muted mt-1">
+                                    <i class="bi bi-arrow-repeat"></i> <abbr title="Inter-Site Topology Generator">ISTG</abbr>: @site.InterSiteTopologyGenerator
+                                </small>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>

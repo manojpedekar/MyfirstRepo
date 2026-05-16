@@ -1,0 +1,343 @@
+@model OrphanedDataViewModel
+@using CLAWS.Jobs
+@{
+    ViewData["Title"] = "Orphaned Data Cleanup";
+    var cleanupJobId = TempData["CleanupJobId"] as string;
+    var cleanupInventoryId = TempData["CleanupInventoryId"] as string;
+    var cleanupAllJobId = TempData["CleanupAllJobId"] as string;
+    var allOrphanedProgressId = OrphanedDataCleanupJob.GetAllOrphanedProgressId().ToString();
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-trash3"></i> Orphaned Data Cleanup
+</h1>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Orphaned data are inventories in the <code>fssimport</code> schema that have no associated upload record.
+    This can occur when an upload fails during import or when an upload is deleted but the import data cleanup fails.
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle"></i> @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@* Global progress alert for cleanup all *@
+@if (!string.IsNullOrEmpty(cleanupAllJobId))
+{
+    <div class="alert alert-info" id="cleanup-all-progress-alert">
+        <i class="bi bi-hourglass-split"></i>
+        <strong>Cleanup job started for all orphaned inventories.</strong>
+        <span id="cleanup-all-status">Initializing...</span>
+        <div class="progress mt-2" style="height: 8px;">
+            <div id="cleanup-all-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                 role="progressbar" style="width: 0%"></div>
+        </div>
+    </div>
+}
+
+@if (Model.Inventories.Count == 0)
+{
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> No orphaned data found. The <code>fssimport</code> schema is clean.
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-database-exclamation"></i>
+                Found @Model.Inventories.Count orphaned inventory(s)
+            </span>
+            <div class="cleanup-all-container">
+                <form asp-action="CleanupAllOrphanedInventories" method="post" style="display: inline;"
+                      id="cleanup-all-form"
+                      onsubmit="return confirmCleanupAll(@Model.Inventories.Count);">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger btn-sm" id="cleanup-all-btn">
+                        <i class="bi bi-trash3"></i> Delete All Orphaned Data
+                    </button>
+                </form>
+                <div class="cleanup-all-progress d-none" id="cleanup-all-inline-progress">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-danger me-2" role="status"></div>
+                        <small class="text-muted" id="cleanup-all-inline-text">Processing...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Inventory ID</th>
+                            <th>Computer</th>
+                            <th>Path</th>
+                            <th>Collected</th>
+                            <th>Folders</th>
+                            <th>Files</th>
+                            <th>Permissions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inventory in Model.Inventories)
+                        {
+                            var isCurrentlyCleaning = cleanupInventoryId == inventory.InventoryId.ToString();
+                            <tr data-inventory-id="@inventory.InventoryId" class="@(isCurrentlyCleaning ? "table-warning" : "")">
+                                <td>
+                                    <code class="small">@inventory.InventoryId.ToString().Substring(0, 8)...</code>
+                                </td>
+                                <td>@(inventory.ComputerName ?? "-")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(inventory.ScanPath))
+                                    {
+                                        <span title="@inventory.ScanPath">
+                                            @(inventory.ScanPath.Length > 40 ? inventory.ScanPath.Substring(0, 40) + "..." : inventory.ScanPath)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (inventory.CollectionDateTime.HasValue)
+                                    {
+                                        <span data-utc="@inventory.CollectionDateTime.Value.ToString("o")" data-format="short">@inventory.CollectionDateTime.Value.ToString("g")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>@inventory.FoldersCount.ToString("N0")</td>
+                                <td>@inventory.FilesCount.ToString("N0")</td>
+                                <td>@inventory.PermissionsCount.ToString("N0")</td>
+                                <td>
+                                    <div class="inventory-action-container">
+                                        <form asp-action="CleanupOrphanedInventory" asp-route-id="@inventory.InventoryId"
+                                              method="post" style="display: inline;"
+                                              class="cleanup-form"
+                                              onsubmit="return confirmCleanup('@inventory.InventoryId');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger cleanup-btn @(isCurrentlyCleaning ? "d-none" : "")" title="Delete orphaned data">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        <div class="cleanup-progress @(isCurrentlyCleaning ? "" : "d-none")">
+                                            <div class="spinner-border spinner-border-sm text-danger" role="status">
+                                                <span class="visually-hidden">Cleaning...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-secondary">
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td><strong>@Model.Inventories.Sum(i => i.FoldersCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.Inventories.Sum(i => i.FilesCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.Inventories.Sum(i => i.PermissionsCount).ToString("N0")</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmCleanup(inventoryId) {
+            if (!confirm('Are you sure you want to delete this orphaned inventory? This cannot be undone.')) {
+                return false;
+            }
+
+            // Show immediate feedback
+            var row = document.querySelector('[data-inventory-id="' + inventoryId + '"]');
+            if (row) {
+                row.classList.add('table-warning');
+                var btn = row.querySelector('.cleanup-btn');
+                var progress = row.querySelector('.cleanup-progress');
+                if (btn) btn.classList.add('d-none');
+                if (progress) progress.classList.remove('d-none');
+            }
+
+            return true;
+        }
+
+        function confirmCleanupAll(count) {
+            if (!confirm('Are you sure you want to delete ALL ' + count + ' orphaned inventories? This cannot be undone.')) {
+                return false;
+            }
+
+            // Show immediate feedback
+            var btn = document.getElementById('cleanup-all-btn');
+            var progress = document.getElementById('cleanup-all-inline-progress');
+            if (btn) btn.classList.add('d-none');
+            if (progress) progress.classList.remove('d-none');
+
+            return true;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Collect inventory IDs for progress subscription
+            var inventoryRows = document.querySelectorAll('[data-inventory-id]');
+            var inventoryIds = [];
+            inventoryRows.forEach(function(row) {
+                inventoryIds.push(row.getAttribute('data-inventory-id'));
+            });
+
+            // Also add the "cleanup all" progress ID
+            var allOrphanedProgressId = '@allOrphanedProgressId';
+            var cleanupInventoryId = '@(cleanupInventoryId ?? "")';
+            var cleanupAllJobId = '@(cleanupAllJobId ?? "")';
+
+            if (inventoryIds.length === 0 && !cleanupAllJobId) return;
+
+            // Connect to SignalR
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/upload')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('ProgressUpdate', function(data) {
+                console.log('Progress update:', data);
+
+                // Check if this is the "cleanup all" progress
+                if (data.uploadId === allOrphanedProgressId) {
+                    var globalStatus = document.getElementById('cleanup-all-status');
+                    var globalBar = document.getElementById('cleanup-all-progress-bar');
+                    var inlineText = document.getElementById('cleanup-all-inline-text');
+
+                    if (globalStatus) globalStatus.textContent = data.message;
+                    if (globalBar) globalBar.style.width = data.percent + '%';
+                    if (inlineText) inlineText.textContent = data.percent + '% - ' + data.message;
+
+                    if (data.phase === 'Completed') {
+                        if (globalBar) {
+                            globalBar.classList.remove('progress-bar-animated', 'progress-bar-striped', 'bg-info');
+                            globalBar.classList.add('bg-success');
+                        }
+                        if (globalStatus) globalStatus.textContent = 'Completed! Refreshing...';
+                        if (inlineText) inlineText.textContent = 'Completed!';
+
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 2000);
+                    } else if (data.phase === 'Failed') {
+                        if (globalBar) {
+                            globalBar.classList.remove('progress-bar-animated', 'progress-bar-striped', 'bg-info');
+                            globalBar.classList.add('bg-danger');
+                        }
+                        if (globalStatus) {
+                            globalStatus.classList.add('text-danger');
+                            globalStatus.textContent = 'Failed: ' + data.message;
+                        }
+
+                        // Show button again after failure
+                        setTimeout(function() {
+                            var btn = document.getElementById('cleanup-all-btn');
+                            var progress = document.getElementById('cleanup-all-inline-progress');
+                            if (btn) btn.classList.remove('d-none');
+                            if (progress) progress.classList.add('d-none');
+                        }, 5000);
+                    }
+                    return;
+                }
+
+                // Check if this is a single inventory progress
+                var row = document.querySelector('[data-inventory-id="' + data.uploadId + '"]');
+                if (row) {
+                    var btn = row.querySelector('.cleanup-btn');
+                    var progressContainer = row.querySelector('.cleanup-progress');
+
+                    // Show progress, hide button
+                    if (btn) btn.classList.add('d-none');
+                    if (progressContainer) progressContainer.classList.remove('d-none');
+
+                    if (data.phase === 'Completed') {
+                        row.classList.remove('table-warning');
+                        row.classList.add('table-success');
+                        if (progressContainer) {
+                            progressContainer.innerHTML = '<i class="bi bi-check-circle text-success"></i>';
+                        }
+
+                        // Remove row after a moment
+                        setTimeout(function() {
+                            row.style.opacity = '0';
+                            row.style.transition = 'opacity 0.5s';
+                            setTimeout(function() {
+                                row.remove();
+                                // Refresh if no more rows
+                                var remainingRows = document.querySelectorAll('[data-inventory-id]');
+                                if (remainingRows.length === 0) {
+                                    window.location.reload();
+                                }
+                            }, 500);
+                        }, 1000);
+                    } else if (data.phase === 'Failed') {
+                        row.classList.remove('table-warning');
+                        row.classList.add('table-danger');
+                        if (progressContainer) {
+                            progressContainer.innerHTML = '<i class="bi bi-x-circle text-danger" title="' + data.message + '"></i>';
+                        }
+
+                        // Show button again after failure
+                        setTimeout(function() {
+                            row.classList.remove('table-danger');
+                            if (btn) btn.classList.remove('d-none');
+                            if (progressContainer) {
+                                progressContainer.classList.add('d-none');
+                                progressContainer.innerHTML = '<div class="spinner-border spinner-border-sm text-danger" role="status"><span class="visually-hidden">Cleaning...</span></div>';
+                            }
+                        }, 5000);
+                    }
+                }
+            });
+
+            connection.start().then(function() {
+                console.log('SignalR connected');
+
+                // Subscribe to all inventory progress IDs
+                inventoryIds.forEach(function(id) {
+                    connection.invoke('SubscribeToUpload', id);
+                });
+
+                // Subscribe to cleanup all progress
+                connection.invoke('SubscribeToUpload', allOrphanedProgressId);
+
+                // If a job was just started, also subscribe to it specifically
+                if (cleanupInventoryId) {
+                    connection.invoke('SubscribeToUpload', cleanupInventoryId);
+                }
+            }).catch(function(err) {
+                console.error('SignalR connection error:', err);
+            });
+        });
+    </script>
+}

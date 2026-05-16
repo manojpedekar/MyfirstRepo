@@ -1,0 +1,236 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-speedometer2"></i> Admin Dashboard
+</h1>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-bg-primary mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Uploads</h5>
+                        <h2 class="mb-0">@Model.TotalUploads</h2>
+                    </div>
+                    <i class="bi bi-cloud-upload display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-warning mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Queued</h5>
+                        <h2 class="mb-0">@Model.QueuedUploads</h2>
+                    </div>
+                    <i class="bi bi-hourglass-split display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-info mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Active Imports</h5>
+                        <h2 class="mb-0">@Model.ActiveImports</h2>
+                    </div>
+                    <i class="bi bi-arrow-repeat display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card @(Model.DiskSpace.IsCritical ? "text-bg-danger" : Model.DiskSpace.IsWarning ? "text-bg-warning" : "text-bg-success") mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Disk Space</h5>
+                        <h6 class="mb-0">@Model.DiskSpace.FreeFormatted free</h6>
+                        <small>@Model.DiskSpace.UsedPercent.ToString("F1")% used</small>
+                    </div>
+                    <i class="bi bi-hdd display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-activity"></i> System Status
+    </div>
+    <div class="card-body py-2">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-medium">Database</span>
+                        @if (Model.IsDbConfigured)
+                        {
+                            <span class="badge bg-success"><i class="bi bi-check"></i> Connected</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger"><i class="bi bi-x"></i> Not Configured</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-medium">Authorization</span>
+                        @if (Model.IsAuthConfigured)
+                        {
+                            <span class="badge bg-success"><i class="bi bi-check"></i> Configured</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation"></i> Open Access</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-medium">Storage Location</span>
+                        @if (Model.IsUsingAppDirectory)
+                        {
+                            <span class="badge bg-warning text-dark"><i class="bi bi-exclamation"></i> App Directory</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success"><i class="bi bi-check"></i> Dedicated Volume</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-gear"></i> Quick Actions
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-6 col-md-3">
+                <a asp-action="Configuration" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-sliders"></i> Configuration
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="Uploads" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-list-ul"></i> All Uploads
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="ChunkedUploads" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-cloud-arrow-up"></i> Chunked Uploads
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="ApiKeys" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-key"></i> API Keys
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="Logs" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-journal-text"></i> Event Logs
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="BannerMessages" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-megaphone"></i> Banner Messages
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="Logging" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-bug"></i> Logging
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="OrphanedData" class="btn btn-outline-warning w-100">
+                    <i class="bi bi-trash3"></i> Orphaned Data
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a asp-action="Maintenance" class="btn btn-outline-danger w-100">
+                    <i class="bi bi-wrench-adjustable"></i> Maintenance
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/hangfire" class="btn btn-outline-secondary w-100" target="_blank">
+                    <i class="bi bi-diagram-3"></i> Hangfire Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Uploads -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-clock-history"></i> Recent Uploads
+    </div>
+    <div class="card-body">
+        @if (Model.RecentUploads.Count == 0)
+        {
+            <p class="text-muted mb-0">No uploads yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Status</th>
+                            <th>Uploaded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var upload in Model.RecentUploads)
+                        {
+                            <tr>
+                                <td>@upload.OriginalFilename</td>
+                                <td>
+                                    @{
+                                        var typeDisplay = upload.UploadType switch
+                                        {
+                                            "NTFSPermissions" => "NTFS Perms",
+                                            "ADInventory" => "AD Inventory",
+                                            _ => upload.UploadType ?? "Unknown"
+                                        };
+                                    }
+                                    <small class="text-muted">@typeDisplay</small>
+                                </td>
+                                <td>@((upload.FileSizeBytes / 1024.0 / 1024.0).ToString("N1")) MB</td>
+                                <td>
+                                    <span class="badge @(upload.Status == "Completed" ? "bg-success" : upload.Status == "Failed" ? "bg-danger" : "bg-secondary")">
+                                        @upload.Status
+                                    </span>
+                                </td>
+                                <td><span data-utc="@upload.UploadedAt.ToString("o")" data-format="short">@upload.UploadedAt.ToString("g")</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

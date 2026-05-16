@@ -1,0 +1,289 @@
+@model DomainEditViewModel
+@* Health tab - SYSVOL replication, GPO health, Optional Features *@
+
+<div class="tab-pane fade" id="health-pane" role="tabpanel" aria-labelledby="health-tab">
+    @if (Model.DomainHealth == null || !Model.DomainHealth.HasData)
+    {
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-heart-pulse fs-1 mb-2 d-block"></i>
+            <p class="mb-1">No domain health data available.</p>
+            <small>Ensure the ADInventory collection includes health metrics.</small>
+        </div>
+    }
+    else
+    {
+        <!-- SYSVOL Replication Card -->
+        <div class="card mb-3">
+            <div class="card-header bg-info-subtle py-2">
+                <i class="bi bi-folder-symlink"></i> <abbr title="System Volume">SYSVOL</abbr> Replication
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <th class="text-nowrap ps-3" style="width: 45%;">Replication Method</th>
+                            <td>
+                                @if (!string.IsNullOrEmpty(Model.DomainHealth.SysvolReplicationMethod))
+                                {
+                                    <span class="badge bg-@Model.DomainHealth.SysvolHealthClass">
+                                        @Model.DomainHealth.SysvolReplicationMethod
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Unknown</span>
+                                }
+                            </td>
+                        </tr>
+                        @if (!string.IsNullOrEmpty(Model.DomainHealth.SysvolMigrationState))
+                        {
+                            <tr>
+                                <th class="text-nowrap ps-3">Migration State</th>
+                                <td>@Model.DomainHealth.SysvolMigrationState</td>
+                            </tr>
+                        }
+                        <tr>
+                            <th class="text-nowrap ps-3"><abbr title="Distributed File System Replication">DFSR</abbr> Present</th>
+                            <td>
+                                @if (Model.DomainHealth.DFSRExists == true)
+                                {
+                                    <span><i class="bi bi-check-circle-fill text-success"></i> Yes</span>
+                                }
+                                else if (Model.DomainHealth.DFSRExists == false)
+                                {
+                                    <span><i class="bi bi-x-circle-fill text-danger"></i> No</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-nowrap ps-3"><abbr title="File Replication Service">FRS</abbr> Present</th>
+                            <td>
+                                @if (Model.DomainHealth.FRSExists == true)
+                                {
+                                    <span><i class="bi bi-exclamation-triangle-fill text-warning"></i> Yes (Legacy)</span>
+                                }
+                                else if (Model.DomainHealth.FRSExists == false)
+                                {
+                                    <span><i class="bi bi-check-circle-fill text-success"></i> No</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-nowrap ps-3"><abbr title="System Volume">SYSVOL</abbr> Accessible</th>
+                            <td>
+                                @if (Model.DomainHealth.SYSVOLAccessible == true)
+                                {
+                                    <span><i class="bi bi-check-circle-fill text-success"></i> Yes</span>
+                                }
+                                else if (Model.DomainHealth.SYSVOLAccessible == false)
+                                {
+                                    <span><i class="bi bi-x-circle-fill text-danger"></i> No</span>
+                                    @if (Model.DomainHealth.HasHealthLogs)
+                                    {
+                                        <button class="btn btn-sm btn-link text-danger p-0 ms-2" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#sysvolLogsCollapse"
+                                                aria-expanded="false" aria-controls="sysvolLogsCollapse"
+                                                title="View collection logs">
+                                            <i class="bi bi-journal-text"></i>
+                                        </button>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                @if (Model.DomainHealth.SYSVOLAccessible == false && Model.DomainHealth.HasHealthLogs)
+                {
+                    <div class="collapse p-2" id="sysvolLogsCollapse">
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>SYSVOL Access Issues</strong>
+                            <ul class="mb-0 mt-1">
+                                @foreach (var log in Model.DomainHealth.HealthLogs.Where(l => l.Message.Contains("SYSVOL") || l.Message.Contains("Policies")))
+                                {
+                                    <li>
+                                        @log.Message
+                                        @if (!string.IsNullOrEmpty(log.ExceptionMessage))
+                                        {
+                                            <span class="text-danger">— @log.ExceptionMessage</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- GPO Health Card -->
+        @if (Model.DomainHealth.GPOTotalCount.HasValue)
+        {
+            <div class="card mb-3">
+                <div class="card-header bg-warning-subtle py-2">
+                    <i class="bi bi-file-earmark-ruled"></i> Group Policy Health
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span><abbr title="Group Policy Object">GPO</abbr> Health</span>
+                        <span>
+                            <strong>@(Model.DomainHealth.GPOHealthyCount ?? 0)</strong> / @Model.DomainHealth.GPOTotalCount healthy
+                        </span>
+                    </div>
+                    <div class="progress mb-3" style="height: 20px;">
+                        @{
+                            var total = Model.DomainHealth.GPOTotalCount ?? 1;
+                            var healthy = Model.DomainHealth.GPOHealthyCount ?? 0;
+                            var orphanedGPC = Model.DomainHealth.GPOOrphanedGPCCount ?? 0;
+                            var orphanedGPT = Model.DomainHealth.GPOOrphanedGPTCount ?? 0;
+                            var versionMismatch = Model.DomainHealth.GPOVersionMismatchCount ?? 0;
+
+                            var healthyPct = total > 0 ? (healthy * 100.0 / total) : 0;
+                            var orphanedGPCPct = total > 0 ? (orphanedGPC * 100.0 / total) : 0;
+                            var orphanedGPTPct = total > 0 ? (orphanedGPT * 100.0 / total) : 0;
+                            var mismatchPct = total > 0 ? (versionMismatch * 100.0 / total) : 0;
+                        }
+                        <div class="progress-bar bg-success" role="progressbar" style="width: @healthyPct.ToString("F1")%"
+                             title="Healthy: @healthy"></div>
+                        @if (orphanedGPC > 0)
+                        {
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: @orphanedGPCPct.ToString("F1")%"
+                                 title="Orphaned GPC (Group Policy Container): @orphanedGPC"></div>
+                        }
+                        @if (orphanedGPT > 0)
+                        {
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: @orphanedGPTPct.ToString("F1")%"
+                                 title="Orphaned GPT (Group Policy Template): @orphanedGPT"></div>
+                        }
+                        @if (versionMismatch > 0)
+                        {
+                            <div class="progress-bar bg-info" role="progressbar" style="width: @mismatchPct.ToString("F1")%"
+                                 title="Version Mismatch: @versionMismatch"></div>
+                        }
+                    </div>
+
+                    @if (orphanedGPC > 0 || orphanedGPT > 0 || versionMismatch > 0)
+                    {
+                        <div class="d-flex justify-content-between align-items-center small">
+                            @* Left side: View Collection Logs button *@
+                            <div>
+                                @if (Model.DomainHealth.HasHealthLogs)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#healthLogsCollapse"
+                                            aria-expanded="false" aria-controls="healthLogsCollapse">
+                                        <i class="bi bi-journal-text"></i> View Collection Logs (@Model.DomainHealth.HealthLogs.Count)
+                                    </button>
+                                }
+                            </div>
+                            @* Right side: Issue badges *@
+                            <div>
+                                @if (orphanedGPC > 0)
+                                {
+                                    <span class="badge bg-danger ms-1" title="Group Policy Container">@orphanedGPC orphaned <abbr title="Group Policy Container">GPC</abbr></span>
+                                }
+                                @if (orphanedGPT > 0)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1" title="Group Policy Template">@orphanedGPT orphaned <abbr title="Group Policy Template">GPT</abbr></span>
+                                }
+                                @if (versionMismatch > 0)
+                                {
+                                    <span class="badge bg-info ms-1">@versionMismatch version mismatch</span>
+                                }
+                            </div>
+                        </div>
+
+                        @* Collapsible logs section *@
+                        @if (Model.DomainHealth.HasHealthLogs)
+                        {
+                            <div class="collapse mt-2" id="healthLogsCollapse">
+                                    <div class="card card-body p-2 bg-light">
+                                        <small class="text-muted mb-2 d-block">
+                                            <i class="bi bi-info-circle"></i> These logs may explain why GPO health data is incomplete.
+                                        </small>
+                                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                            <table class="table table-sm table-striped mb-0 small">
+                                                <thead class="table-light sticky-top">
+                                                    <tr>
+                                                        <th style="width: 80px;">Level</th>
+                                                        <th>Message</th>
+                                                        <th style="width: 200px;">Details</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var log in Model.DomainHealth.HealthLogs)
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <span class="badge bg-@log.LevelBadgeClass">
+                                                                    <i class="bi @log.LevelIcon"></i> @log.Level
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                @log.Message
+                                                                @if (!string.IsNullOrEmpty(log.Context))
+                                                                {
+                                                                    @* Unescape JSON backslashes for display *@
+                                                                    <br /><code class="small text-muted">@log.Context.Replace("\\\\", "\\")</code>
+                                                                }
+                                                            </td>
+                                                            <td class="text-danger small">
+                                                                @if (!string.IsNullOrEmpty(log.ExceptionMessage))
+                                                                {
+                                                                    <span title="@log.ExceptionType">@log.ExceptionMessage</span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Optional Features Card -->
+        @if (Model.DomainHealth.OptionalFeatures?.Count > 0)
+        {
+            <div class="card">
+                <div class="card-header bg-secondary-subtle py-2">
+                    <i class="bi bi-toggles"></i> Optional Features
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var feature in Model.DomainHealth.OptionalFeatures)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                            <div>
+                                <i class="bi @feature.StatusIcon text-@feature.StatusBadgeClass me-2"></i>
+                                <span>@feature.FeatureName</span>
+                                @if (!string.IsNullOrEmpty(feature.RequiredForestLevelName))
+                                {
+                                    <small class="text-muted ms-2">(@feature.RequiredForestLevelName)</small>
+                                }
+                            </div>
+                            <span class="badge bg-@feature.StatusBadgeClass">
+                                @(feature.IsEnabled ? "Enabled" : "Not Enabled")
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>

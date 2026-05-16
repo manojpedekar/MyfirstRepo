@@ -1,0 +1,242 @@
+@model DomainEditViewModel
+@* PKI tab - Public Key Infrastructure summary *@
+
+<div class="tab-pane fade" id="pki-pane" role="tabpanel" aria-labelledby="pki-tab">
+    @if (Model.PkiSummary == null || !Model.PkiSummary.HasData)
+    {
+        <div class="text-center text-muted py-4">
+            <i class="bi bi-file-earmark-lock fs-1 mb-2 d-block"></i>
+            <p class="mb-1">No PKI infrastructure found.</p>
+            <small>Enterprise Certificate Services may not be configured in this forest.</small>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info py-2 mb-3">
+            <i class="bi bi-info-circle"></i>
+            <small>Forest-level PKI configuration from <strong>@Model.PkiSummary.ForestName</strong></small>
+        </div>
+
+        <!-- Summary Cards Row - Clickable to open modals -->
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body py-2">
+                        <div class="fs-3 fw-bold text-primary">@Model.PkiSummary.EnterpriseCAs.Count</div>
+                        <small class="text-muted">Enterprise CAs</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                @if (Model.PkiSummary.CertificateTemplateCount > 0)
+                {
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#certificateTemplatesModal"
+                       class="card text-center h-100 text-decoration-none card-hover">
+                        <div class="card-body py-2">
+                            <div class="fs-3 fw-bold text-info">@Model.PkiSummary.CertificateTemplateCount</div>
+                            <small class="text-muted">Templates</small>
+                            <div><small class="text-primary">View <i class="bi bi-box-arrow-up-right"></i></small></div>
+                        </div>
+                    </a>
+                }
+                else
+                {
+                    <div class="card text-center h-100">
+                        <div class="card-body py-2">
+                            <div class="fs-3 fw-bold text-info">0</div>
+                            <small class="text-muted">Templates</small>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col-6 col-md-3">
+                @if (Model.PkiSummary.TrustedRootCACount > 0)
+                {
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#trustedRootCAsModal"
+                       class="card text-center h-100 text-decoration-none card-hover">
+                        <div class="card-body py-2">
+                            <div class="fs-3 fw-bold text-secondary">@Model.PkiSummary.TrustedRootCACount</div>
+                            <small class="text-muted">Trusted Roots</small>
+                            <div><small class="text-primary">View <i class="bi bi-box-arrow-up-right"></i></small></div>
+                        </div>
+                    </a>
+                }
+                else
+                {
+                    <div class="card text-center h-100">
+                        <div class="card-body py-2">
+                            <div class="fs-3 fw-bold text-secondary">0</div>
+                            <small class="text-muted">Trusted Roots</small>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="col-6 col-md-3">
+                @if (Model.PkiSummary.NTAuthCertificateCount > 0)
+                {
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#ntAuthCertificatesModal"
+                       class="card text-center h-100 text-decoration-none card-hover">
+                        <div class="card-body py-2">
+                            <div class="fs-3 fw-bold @(Model.PkiSummary.NTAuthExpiringCount > 0 ? "text-warning" : "text-success")">
+                                @Model.PkiSummary.NTAuthCertificateCount
+                            </div>
+                            <small class="text-muted">
+                                NTAuth Certs
+                                @if (Model.PkiSummary.NTAuthExpiringCount > 0)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1" title="Expiring within 90 days">
+                                        @Model.PkiSummary.NTAuthExpiringCount expiring
+                                    </span>
+                                }
+                            </small>
+                            <div><small class="text-primary">View <i class="bi bi-box-arrow-up-right"></i></small></div>
+                        </div>
+                    </a>
+                }
+                else
+                {
+                    <div class="card text-center h-100">
+                        <div class="card-body py-2">
+                            <div class="fs-3 fw-bold text-success">0</div>
+                            <small class="text-muted">NTAuth Certs</small>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Model.PkiSummary.EnterpriseCAs.Any())
+        {
+            <!-- Enterprise CAs Card - Clickable rows -->
+            <div class="card mb-3">
+                <div class="card-header bg-warning-subtle py-2">
+                    <i class="bi bi-building"></i> Enterprise Certification Authorities
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @foreach (var ca in Model.PkiSummary.EnterpriseCAs)
+                        {
+                            <a href="#" class="list-group-item list-group-item-action"
+                               onclick="showEnterpriseCaDetail('@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(ca.CAName))'); return false;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <i class="bi @ca.TypeIcon text-@ca.TypeBadgeClass me-1"></i>
+                                        <strong>@ca.CAName</strong>
+                                        @if (!string.IsNullOrEmpty(ca.CAType))
+                                        {
+                                            <span class="badge bg-@ca.TypeBadgeClass ms-2">@ca.CAType</span>
+                                        }
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (ca.TemplateCount > 0)
+                                        {
+                                            <span class="badge bg-info" title="Published certificate templates">
+                                                @ca.TemplateCount templates
+                                            </span>
+                                        }
+                                        <i class="bi bi-chevron-right text-muted"></i>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(ca.DNSHostName))
+                                {
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="bi bi-pc-display"></i> @ca.DNSHostName
+                                    </small>
+                                }
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Additional Info - Clickable rows -->
+        <div class="card">
+            <div class="card-header bg-secondary-subtle py-2">
+                <i class="bi bi-info-circle"></i> PKI Components
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <tbody>
+                        @if (Model.PkiSummary.CertificateTemplateCount > 0)
+                        {
+                            <tr role="button" data-bs-toggle="modal" data-bs-target="#certificateTemplatesModal" class="cursor-pointer">
+                                <th class="ps-3" style="width: 50%;">Certificate Templates</th>
+                                <td>
+                                    <span class="badge bg-info">@Model.PkiSummary.CertificateTemplateCount</span>
+                                    <small class="text-muted ms-1">published in AD</small>
+                                    <i class="bi bi-box-arrow-up-right text-primary float-end"></i>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <th class="ps-3" style="width: 50%;">Certificate Templates</th>
+                                <td><span class="text-muted">None</span></td>
+                            </tr>
+                        }
+                        @if (Model.PkiSummary.TrustedRootCACount > 0)
+                        {
+                            <tr role="button" data-bs-toggle="modal" data-bs-target="#trustedRootCAsModal" class="cursor-pointer">
+                                <th class="ps-3">Trusted Root CAs</th>
+                                <td>
+                                    <span class="badge bg-secondary">@Model.PkiSummary.TrustedRootCACount</span>
+                                    <small class="text-muted ms-1">in AD trust store</small>
+                                    <i class="bi bi-box-arrow-up-right text-primary float-end"></i>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <th class="ps-3">Trusted Root CAs</th>
+                                <td><span class="text-muted">None</span></td>
+                            </tr>
+                        }
+                        @if (Model.PkiSummary.NTAuthCertificateCount > 0)
+                        {
+                            <tr role="button" data-bs-toggle="modal" data-bs-target="#ntAuthCertificatesModal" class="cursor-pointer">
+                                <th class="ps-3">
+                                    <abbr title="NTAuth certificates authorize CAs for smart card logon and other authentication">NTAuth Certificates</abbr>
+                                </th>
+                                <td>
+                                    <span class="badge bg-success">@Model.PkiSummary.NTAuthCertificateCount</span>
+                                    @if (Model.PkiSummary.NTAuthExpiringCount > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1" title="Certificates expiring within 90 days">
+                                            <i class="bi bi-exclamation-triangle"></i> @Model.PkiSummary.NTAuthExpiringCount expiring
+                                        </span>
+                                    }
+                                    <i class="bi bi-box-arrow-up-right text-primary float-end"></i>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <th class="ps-3">
+                                    <abbr title="NTAuth certificates authorize CAs for smart card logon and other authentication">NTAuth Certificates</abbr>
+                                </th>
+                                <td><span class="text-muted">None</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .card-hover {
+        transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .card-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>

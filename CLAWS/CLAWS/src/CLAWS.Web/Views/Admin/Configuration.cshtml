@@ -1,0 +1,1637 @@
+@model ConfigurationViewModel
+@{
+    ViewData["Title"] = "Configuration";
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-sliders"></i> Configuration
+</h1>
+
+@if (Model.SqlServer.RestartRequired)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Restart Required!</strong> Configuration changes have been saved. Please restart the application pool for changes to take effect.
+        <br />
+        <small>Run: <code>Restart-WebAppPool -Name "CLAWS"</code></small>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-end mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleAllBtn" onclick="toggleAllSections()">
+        <i class="bi bi-arrows-expand" id="toggleAllIcon"></i> <span id="toggleAllText">Expand All</span>
+    </button>
+</div>
+
+<div class="accordion" id="configAccordion">
+
+    <!-- Authorization Configuration -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAuthorization">
+                <i class="bi bi-shield-lock me-2"></i> Authorization Configuration
+            </button>
+        </h2>
+        <div id="collapseAuthorization" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["AuthMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["AuthMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveAuthorizationConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <h6 class="text-muted mb-3">Authorization Groups</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="siteAdminGroup" class="form-label">Site Admin Group</label>
+                            <input type="text" class="form-control" id="siteAdminGroup" name="siteAdminGroup"
+                                   value="@Model.SiteAdminGroup" placeholder="DOMAIN\CLAWS-Admins">
+                            <div class="form-text">
+                                Full system access including Admin menu, configuration, and all data management.
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="ntfsPermsAdminGroup" class="form-label">NTFS Perms Admin Group</label>
+                            <input type="text" class="form-control" id="ntfsPermsAdminGroup" name="ntfsPermsAdminGroup"
+                                   value="@Model.NtfsPermsAdminGroup" placeholder="DOMAIN\Storage-Admins">
+                            <div class="form-text">
+                                Manage any NTFS upload and delete NTFS production data.
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="adAdminGroup" class="form-label">AD Admin Group</label>
+                            <input type="text" class="form-control" id="adAdminGroup" name="adAdminGroup"
+                                   value="@Model.AdAdminGroup" placeholder="DOMAIN\Identity-Team">
+                            <div class="form-text">
+                                Manage any AD upload, delete AD production data, and edit Domain Master List.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small mt-2">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Permission Model:</strong>
+                        <ul class="mb-0 mt-1">
+                            <li><strong>All authenticated users</strong> can view all pages (except Admin), upload files, and manage their own uploads.</li>
+                            <li><strong>NTFS Perms Admin</strong> can manage any NTFS upload and delete NTFS production collections.</li>
+                            <li><strong>AD Admin</strong> can manage any AD upload, delete AD collections, and edit the Domain Master List.</li>
+                            <li><strong>Site Admin</strong> has full access including the Admin menu.</li>
+                            <li>Users can belong to multiple groups (permissions are additive).</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Authorization Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- LDAP Authentication -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLdap">
+                <i class="bi bi-person-badge me-2"></i> LDAP Authentication
+                @if (Model.Ldap.Enabled)
+                {
+                    <span class="badge bg-success ms-2"><i class="bi bi-check"></i> Enabled</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary ms-2"><i class="bi bi-x"></i> Disabled</span>
+                }
+            </button>
+        </h2>
+        <div id="collapseLdap" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["LdapMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["LdapMessage"]
+                    </div>
+                }
+
+                <p class="text-muted small mb-3">
+                    Configure LDAP/LDAPS authentication for user login. When enabled, users must authenticate via the login page
+                    instead of Windows Integrated Authentication.
+                </p>
+
+                <form asp-action="SaveLdapConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="hidden" name="enabled" value="false">
+                            <input class="form-check-input" type="checkbox" id="ldapEnabled" name="enabled"
+                                   value="true" @(Model.Ldap.Enabled ? "checked" : "") onchange="toggleLdapSettings()">
+                            <label class="form-check-label" for="ldapEnabled">
+                                <strong>Enable LDAP Authentication</strong>
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            When enabled, users will be redirected to a login page and must authenticate with LDAP credentials.
+                        </div>
+                    </div>
+
+                    <div id="ldapSettingsSection" style="display: @(Model.Ldap.Enabled ? "block" : "none");">
+                        <hr class="my-3" />
+
+                        <h6 class="mb-3"><i class="bi bi-server"></i> LDAP Server Settings</h6>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ldapServer" class="form-label">LDAP Server</label>
+                                <input type="text" class="form-control" id="ldapServer" name="server"
+                                       value="@Model.Ldap.Server" placeholder="ldaps.ssnc-corp.global">
+                                <div class="form-text">LDAP server hostname or IP address.</div>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="ldapPort" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="ldapPort" name="port"
+                                       value="@Model.Ldap.Port" min="1" max="65535">
+                                <div class="form-text">636 for LDAPS, 389 for LDAP.</div>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="form-check mt-2">
+                                    <input type="hidden" name="useSsl" value="false">
+                                    <input class="form-check-input" type="checkbox" id="ldapUseSsl" name="useSsl"
+                                           value="true" @(Model.Ldap.UseSsl ? "checked" : "")>
+                                    <label class="form-check-label" for="ldapUseSsl">
+                                        Use SSL/TLS
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ldapBaseDn" class="form-label">Base DN</label>
+                                <input type="text" class="form-control" id="ldapBaseDn" name="baseDn"
+                                       value="@Model.Ldap.BaseDn" placeholder="DC=ssnc-corp,DC=global">
+                                <div class="form-text">Base distinguished name for user search.</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="ldapDomain" class="form-label">Domain Prefix (Optional)</label>
+                                <input type="text" class="form-control" id="ldapDomain" name="domain"
+                                       value="@Model.Ldap.Domain" placeholder="SSNC-CORP">
+                                <div class="form-text">Domain prefix for DOMAIN\username format.</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="ldapUserSearchFilter" class="form-label">User Search Filter</label>
+                                <input type="text" class="form-control" id="ldapUserSearchFilter" name="userSearchFilter"
+                                       value="@Model.Ldap.UserSearchFilter" placeholder="(sAMAccountName={0})">
+                                <div class="form-text">LDAP filter for user lookup. Use {0} as placeholder for username.</div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="ldapConnectionTimeout" class="form-label">Connection Timeout (sec)</label>
+                                <input type="number" class="form-control" id="ldapConnectionTimeout" name="connectionTimeout"
+                                       value="@Model.Ldap.ConnectionTimeout" min="5" max="120">
+                                <div class="form-text">Timeout for LDAP connections.</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-3" />
+
+                        <h6 class="mb-3"><i class="bi bi-key"></i> Fallback Authentication</h6>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="hidden" name="allowKeymasterFallback" value="false">
+                                <input class="form-check-input" type="checkbox" id="ldapAllowKeymaster" name="allowKeymasterFallback"
+                                       value="true" @(Model.Ldap.AllowKeymasterFallback ? "checked" : "") onchange="toggleKeymasterUsername()">
+                                <label class="form-check-label" for="ldapAllowKeymaster">
+                                    Allow Keymaster Fallback Authentication
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Enable fallback to local Windows authentication when LDAP is unavailable or for emergency access.
+                            </div>
+                        </div>
+
+                        <div class="row" id="keymasterUsernameSection" style="display: @(Model.Ldap.AllowKeymasterFallback ? "block" : "none");">
+                            <div class="col-md-6 mb-3">
+                                <label for="ldapKeymasterUsername" class="form-label">Keymaster Username</label>
+                                <input type="text" class="form-control" id="ldapKeymasterUsername" name="keymasterUsername"
+                                       value="@Model.Ldap.KeymasterUsername" placeholder="Keymaster">
+                                <div class="form-text">Local Windows account for fallback authentication.</div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Note:</strong> When LDAP authentication is enabled, users will see a login page instead of
+                            automatic Windows authentication. The Keymaster account provides emergency access if LDAP is down.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save LDAP Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cloud Integration Validation -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCloudIntegration">
+                <i class="bi bi-cloud-check me-2"></i> Cloud Integration Validation
+                @if (Model.CloudIntegration.Enabled)
+                {
+                    <span class="badge bg-success ms-2"><i class="bi bi-check"></i> Enabled</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary ms-2"><i class="bi bi-x"></i> Disabled</span>
+                }
+            </button>
+        </h2>
+        <div id="collapseCloudIntegration" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["CloudIntegrationMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["CloudIntegrationMessage"]
+                    </div>
+                }
+
+                <p class="text-muted small mb-3">
+                    Configure automated LDAP validation of Cloud AD Management integration status.
+                    This scheduled job queries the Cloud UI directory to validate and update <code>IsCloudIntegrated</code> status for each domain.
+                </p>
+
+                <form asp-action="SaveCloudIntegrationConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="cloudIntegrationEnabled" name="enabled"
+                                   value="true" @(Model.CloudIntegration.Enabled ? "checked" : "") onchange="toggleCloudIntegrationSettings()">
+                            <input type="hidden" name="enabled" value="false">
+                            <label class="form-check-label" for="cloudIntegrationEnabled">
+                                <strong>Enable Cloud Integration Validation</strong>
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            When enabled, a daily Hangfire job will query the Cloud UI LDAP directory to validate domain integration status.
+                        </div>
+                    </div>
+
+                    <div id="cloudIntegrationSettingsSection" style="display: @(Model.CloudIntegration.Enabled ? "block" : "none");">
+                        <hr class="my-3" />
+
+                        <h6 class="mb-3"><i class="bi bi-server"></i> LDAP Server Settings</h6>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cloudLdapServer" class="form-label">LDAP Server <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cloudLdapServer" name="ldapServer"
+                                       value="@Model.CloudIntegration.LdapServer" placeholder="ldaps.ssnc-corp.global">
+                                <div class="form-text">LDAP server hostname for Cloud UI directory.</div>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="cloudLdapPort" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="cloudLdapPort" name="ldapPort"
+                                       value="@Model.CloudIntegration.LdapPort" min="1" max="65535">
+                                <div class="form-text">636 for LDAPS, 389 for LDAP.</div>
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="cloudLdapUseSsl" name="ldapUseSsl"
+                                           value="true" @(Model.CloudIntegration.LdapUseSsl ? "checked" : "")>
+                                    <input type="hidden" name="ldapUseSsl" value="false">
+                                    <label class="form-check-label" for="cloudLdapUseSsl">
+                                        Use SSL/TLS
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="cloudLdapSearchBase" class="form-label">LDAP Search Base <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="cloudLdapSearchBase" name="ldapSearchBase"
+                                       value="@Model.CloudIntegration.LdapSearchBase"
+                                       placeholder="OU=DirectoryList,OU=CloudUI,OU=Domain Delegation,DC=ssnc-corp,DC=global">
+                                <div class="form-text">Distinguished name of the OU containing domain OUs (xldapURL attribute).</div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudConnectionTimeout" class="form-label">Connection Timeout (sec)</label>
+                                <input type="number" class="form-control" id="cloudConnectionTimeout" name="connectionTimeout"
+                                       value="@Model.CloudIntegration.ConnectionTimeout" min="5" max="120">
+                                <div class="form-text">Timeout for LDAP connections.</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-3" />
+
+                        <h6 class="mb-3"><i class="bi bi-key"></i> Service Account Credentials</h6>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudServiceAccountDomain" class="form-label">Domain</label>
+                                <input type="text" class="form-control" id="cloudServiceAccountDomain" name="serviceAccountDomain"
+                                       value="@Model.CloudIntegration.ServiceAccountDomain" placeholder="SSNC-CORP">
+                                <div class="form-text">Domain prefix for service account.</div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudServiceAccountUsername" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="cloudServiceAccountUsername" name="serviceAccountUsername"
+                                       value="@Model.CloudIntegration.ServiceAccountUsername" placeholder="svc-cloudint-reader">
+                                <div class="form-text">Service account for LDAP queries.</div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudServiceAccountPassword" class="form-label">Password</label>
+                                @if (Model.CloudIntegration.HasServiceAccountPassword)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="cloudServiceAccountPassword" name="serviceAccountPassword"
+                                               placeholder="(unchanged)">
+                                        <span class="input-group-text text-success"><i class="bi bi-check-circle"></i></span>
+                                    </div>
+                                    <div class="form-text text-success">Password is configured. Leave blank to keep existing.</div>
+                                }
+                                else
+                                {
+                                    <input type="password" class="form-control" id="cloudServiceAccountPassword" name="serviceAccountPassword"
+                                           placeholder="Enter password">
+                                    <div class="form-text text-warning"><i class="bi bi-exclamation-triangle"></i> Password required.</div>
+                                }
+                            </div>
+                        </div>
+
+                        <hr class="my-3" />
+
+                        <h6 class="mb-3"><i class="bi bi-clock"></i> Schedule & Performance</h6>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudSchedule" class="form-label">Cron Schedule</label>
+                                <input type="text" class="form-control" id="cloudSchedule" name="schedule"
+                                       value="@Model.CloudIntegration.Schedule" placeholder="0 4 * * *">
+                                <div class="form-text">Cron expression. Default: <code>0 4 * * *</code> (4:00 AM daily).</div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudBatchSize" class="form-label">Batch Size</label>
+                                <input type="number" class="form-control" id="cloudBatchSize" name="batchSize"
+                                       value="@Model.CloudIntegration.BatchSize" min="10" max="1000" step="10">
+                                <div class="form-text">Domains per batch. Default: 100.</div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="cloudDelayBetweenBatches" class="form-label">Delay Between Batches (ms)</label>
+                                <input type="number" class="form-control" id="cloudDelayBetweenBatches" name="delayBetweenBatchesMs"
+                                       value="@Model.CloudIntegration.DelayBetweenBatchesMs" min="0" max="10000" step="100">
+                                <div class="form-text">Pause between batches. Default: 1000ms.</div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Validation Behavior:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Domains with <code>IsCloudIntegrated = 3 (Never)</code> are validated but never overwritten</li>
+                                <li>State changes and xldapURL changes are logged to DomainNotes</li>
+                                <li>Password is encrypted using ASP.NET Core Data Protection</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Cloud Integration Settings
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="testCloudConnectionBtn" onclick="testCloudIntegrationConnection()"
+                                @(Model.CloudIntegration.Enabled ? "" : "disabled")>
+                            <i class="bi bi-plug"></i> Test Connection
+                        </button>
+                    </div>
+                </form>
+
+                <div id="cloudConnectionTestResult" class="mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cleanup Settings -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCleanup">
+                <i class="bi bi-trash3 me-2"></i> Cleanup Settings
+            </button>
+        </h2>
+        <div id="collapseCleanup" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["CleanupMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["CleanupMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveCleanupConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="hidden" name="autoPruneCompleted" value="false">
+                            <input class="form-check-input" type="checkbox" id="autoPruneCompleted" name="autoPruneCompleted"
+                                   value="true" @(Model.CleanupSettings.AutoPruneCompleted ? "checked" : "")>
+                            <label class="form-check-label" for="autoPruneCompleted">
+                                Auto-Prune Completed Files
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Automatically clean up completed import files based on retention settings.
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="completedRetentionDays" class="form-label">Completed Retention (days)</label>
+                            <input type="number" class="form-control" id="completedRetentionDays" name="completedRetentionDays"
+                                   value="@Model.CleanupSettings.CompletedRetentionDays" min="0" max="365">
+                            <div class="form-text">Days to keep files in Completed folder.</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="errorRetentionDays" class="form-label">Error Retention (days)</label>
+                            <input type="number" class="form-control" id="errorRetentionDays" name="errorRetentionDays"
+                                   value="@Model.CleanupSettings.ErrorRetentionDays" min="0" max="365">
+                            <div class="form-text">Days to keep files in Errors folder. 0 = never.</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="extractionRetentionDays" class="form-label">Extraction Retention (days)</label>
+                            <input type="number" class="form-control" id="extractionRetentionDays" name="extractionRetentionDays"
+                                   value="@Model.CleanupSettings.ExtractionRetentionDays" min="0" max="365">
+                            <div class="form-text">Days to keep orphaned extraction files.</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Cleanup Settings
+                    </button>
+                </form>
+
+                <hr class="my-4">
+
+                <!-- AD Collection Cleanup Settings -->
+                <h6 class="text-secondary mb-3"><i class="bi bi-diagram-3 me-1"></i> AD Collection Retention</h6>
+
+                @if (TempData["AdCollectionCleanupMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["AdCollectionCleanupMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveAdCollectionCleanupConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="hidden" name="autoPruneAdCollections" value="false">
+                            <input class="form-check-input" type="checkbox" id="autoPruneAdCollections" name="autoPruneAdCollections"
+                                   value="true" @(Model.CleanupSettings.AutoPruneAdCollections ? "checked" : "")>
+                            <label class="form-check-label" for="autoPruneAdCollections">
+                                Auto-Prune AD Collections
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Automatically delete old AD collections per domain, keeping only the most recent.
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="adCollectionsToKeepPerDomain" class="form-label">Collections to Keep (per domain)</label>
+                            <input type="number" class="form-control" id="adCollectionsToKeepPerDomain" name="adCollectionsToKeepPerDomain"
+                                   value="@Model.CleanupSettings.AdCollectionsToKeepPerDomain" min="1" max="100">
+                            <div class="form-text">Number of most recent collections to retain per domain. Older collections will be deleted.</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="adCollectionPruneSchedule" class="form-label">Cleanup Schedule (cron)</label>
+                            <input type="text" class="form-control" id="adCollectionPruneSchedule" name="adCollectionPruneSchedule"
+                                   value="@Model.CleanupSettings.AdCollectionPruneSchedule" placeholder="0 */6 * * *">
+                            <div class="form-text">Cron expression for cleanup frequency. Default: <code>0 */6 * * *</code> (every 6 hours).</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save AD Collection Cleanup Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Performance -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDatabasePerformance">
+                <i class="bi bi-speedometer2 me-2"></i> Database Performance
+            </button>
+        </h2>
+        <div id="collapseDatabasePerformance" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["DatabasePerformanceMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["DatabasePerformanceMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveDatabasePerformanceConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="commandTimeoutMinutes" class="form-label">Command Timeout (minutes)</label>
+                            <input type="number" class="form-control" id="commandTimeoutMinutes" name="commandTimeoutMinutes"
+                                   value="@Model.DatabasePerformance.CommandTimeoutMinutes" min="1" max="120">
+                            <div class="form-text">
+                                Maximum time for validation and migration operations.
+                                Increase for large datasets (3GB uploads may need 30-60 minutes).
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="connectionTimeoutSeconds" class="form-label">Connection Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="connectionTimeoutSeconds" name="connectionTimeoutSeconds"
+                                   value="@Model.DatabasePerformance.ConnectionTimeoutSeconds" min="5" max="300">
+                            <div class="form-text">
+                                Time to wait for initial database connection. Default: 30 seconds.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="importBatchSize" class="form-label">Import Batch Size</label>
+                            <input type="number" class="form-control" id="importBatchSize" name="importBatchSize"
+                                   value="@Model.DatabasePerformance.ImportBatchSize" min="1000" max="100000" step="1000">
+                            <div class="form-text">
+                                Records per batch during bulk import. Larger = faster but more memory. Range: 1,000-100,000.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="maxConcurrentExtractions" class="form-label">Max Concurrent Extractions</label>
+                            <input type="number" class="form-control" id="maxConcurrentExtractions" name="maxConcurrentExtractions"
+                                   value="@Model.DatabasePerformance.MaxConcurrentExtractions" min="1" max="10">
+                            <div class="form-text">
+                                Maximum ZIP files extracted simultaneously. Higher = faster but more disk I/O.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="deletionBatchSize" class="form-label">Deletion Batch Size</label>
+                            <input type="number" class="form-control" id="deletionBatchSize" name="deletionBatchSize"
+                                   value="@Model.DatabasePerformance.DeletionBatchSize" min="1000" max="100000" step="1000">
+                            <div class="form-text">
+                                Records per batch during production collection deletion. Larger = faster but more lock contention. Range: 1,000-100,000.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="bulkCopyTimeoutSeconds" class="form-label">Bulk Copy Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="bulkCopyTimeoutSeconds" name="bulkCopyTimeoutSeconds"
+                                   value="@Model.DatabasePerformance.BulkCopyTimeoutSeconds" min="60" max="3600" step="60">
+                            <div class="form-text">
+                                Timeout per SqlBulkCopy batch. Default: 600 (10 min). Increase for very large batch sizes.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h6 class="mb-3"><i class="bi bi-layers"></i> Table Partitioning (SQL Server Enterprise)</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="partitioningEnabled" name="partitioningEnabled"
+                                       value="true" @(Model.DatabasePerformance.PartitioningEnabled ? "checked" : "") onchange="togglePartitionSettings()">
+                                <input type="hidden" name="partitioningEnabled" value="false">
+                                <label class="form-check-label" for="partitioningEnabled">
+                                    <strong>Enable Table Partitioning</strong>
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Use partition-aware stored procedures for O(1) collection deletion.
+                                <strong>Requires SQL Server Enterprise Edition and partitioning scripts applied.</strong>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="autoPreparePartitionsSection" style="display: @(Model.DatabasePerformance.PartitioningEnabled ? "block" : "none");">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="autoPreparePartitions" name="autoPreparePartitions"
+                                       value="true" @(Model.DatabasePerformance.AutoPreparePartitions ? "checked" : "")>
+                                <input type="hidden" name="autoPreparePartitions" value="false">
+                                <label class="form-check-label" for="autoPreparePartitions">
+                                    Auto-Prepare Partitions Before Import
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Automatically create partition boundaries before importing new collections.
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.DatabasePerformance.PartitioningEnabled)
+                    {
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Partitioning Enabled:</strong> Collection deletions will use partition switching for O(1) performance.
+                            Ensure the partitioning SQL scripts have been applied to the database.
+                        </div>
+                    }
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Performance Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Timeouts -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseJobTimeouts">
+                <i class="bi bi-hourglass-split me-2"></i> Job Timeouts
+            </button>
+        </h2>
+        <div id="collapseJobTimeouts" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["JobTimeoutsMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["JobTimeoutsMessage"]
+                    </div>
+                }
+                <p class="text-muted small mb-3">
+                    Configure timeout limits for background processing jobs.
+                    Increase these values when processing large SAN file systems with millions of folders and ACEs.
+                </p>
+
+                <form asp-action="SaveJobTimeoutsConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="uploadProcessingMinutes" class="form-label">Upload Processing (minutes)</label>
+                            <input type="number" class="form-control" id="uploadProcessingMinutes" name="uploadProcessingMinutes"
+                                   value="@Model.JobTimeouts.UploadProcessingMinutes" min="30" max="720">
+                            <div class="form-text">ZIP extraction and SQLite import. Default: 120</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="validationMinutes" class="form-label">Validation (minutes)</label>
+                            <input type="number" class="form-control" id="validationMinutes" name="validationMinutes"
+                                   value="@Model.JobTimeouts.ValidationMinutes" min="30" max="720">
+                            <div class="form-text">Data validation job. Default: 120</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="migrationMinutes" class="form-label">Migration (minutes)</label>
+                            <input type="number" class="form-control" id="migrationMinutes" name="migrationMinutes"
+                                   value="@Model.JobTimeouts.MigrationMinutes" min="30" max="720">
+                            <div class="form-text">Production table migration. Default: 120</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="validateAndMigrateMinutes" class="form-label">Validate & Migrate (minutes)</label>
+                            <input type="number" class="form-control" id="validateAndMigrateMinutes" name="validateAndMigrateMinutes"
+                                   value="@Model.JobTimeouts.ValidateAndMigrateMinutes" min="60" max="1440">
+                            <div class="form-text">Combined operation. Default: 240</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="deletionMinutes" class="form-label">Deletion (minutes)</label>
+                            <input type="number" class="form-control" id="deletionMinutes" name="deletionMinutes"
+                                   value="@Model.JobTimeouts.DeletionMinutes" min="15" max="480">
+                            <div class="form-text">Collection deletion. Default: 60</div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="schemaTruncateMinutes" class="form-label">Schema Truncate (minutes)</label>
+                            <input type="number" class="form-control" id="schemaTruncateMinutes" name="schemaTruncateMinutes"
+                                   value="@Model.JobTimeouts.SchemaTruncateMinutes" min="30" max="720">
+                            <div class="form-text">Schema reset operation. Default: 120</div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Large SAN Recommendation:</strong> For uploads with 12M+ folders and 150M+ ACEs,
+                        set Upload Processing to 360-480 minutes and Validation/Migration to 240-360 minutes.
+                        <strong>Restart required after saving.</strong>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Job Timeouts
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTTP Server Settings -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHttpServer">
+                <i class="bi bi-globe me-2"></i> HTTP Server Settings
+            </button>
+        </h2>
+        <div id="collapseHttpServer" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["HttpServerMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["HttpServerMessage"]
+                    </div>
+                }
+                <p class="text-muted small mb-3">
+                    Configure HTTP connection timeouts for large file uploads.
+                    These settings affect how long connections stay open during uploads.
+                </p>
+
+                <form asp-action="SaveHttpServerConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="keepAliveTimeoutMinutes" class="form-label">Keep-Alive Timeout (minutes)</label>
+                            <input type="number" class="form-control" id="keepAliveTimeoutMinutes" name="keepAliveTimeoutMinutes"
+                                   value="@Model.HttpServer.KeepAliveTimeoutMinutes" min="5" max="180">
+                            <div class="form-text">
+                                How long idle connections stay open. Default: 60 minutes.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="requestHeadersTimeoutMinutes" class="form-label">Request Headers Timeout (minutes)</label>
+                            <input type="number" class="form-control" id="requestHeadersTimeoutMinutes" name="requestHeadersTimeoutMinutes"
+                                   value="@Model.HttpServer.RequestHeadersTimeoutMinutes" min="5" max="180">
+                            <div class="form-text">
+                                Time allowed for client to send request headers. Default: 60 minutes.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Restart Required:</strong> Changes to HTTP server settings require an application restart to take effect.
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save HTTP Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disk Space Monitoring -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDiskSpace">
+                <i class="bi bi-hdd me-2"></i> Disk Space Monitoring
+            </button>
+        </h2>
+        <div id="collapseDiskSpace" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["DiskSpaceMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["DiskSpaceMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveDiskSpaceConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="warningThreshold" class="form-label">Warning Threshold (%)</label>
+                            <input type="number" class="form-control" id="warningThreshold" name="warningThresholdPercent"
+                                   value="@Model.DiskSpace.WarningThresholdPercent" min="0" max="100" step="0.1">
+                            <div class="form-text">
+                                Log warnings when free space falls below this percentage. Set to 0 to disable.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="criticalThreshold" class="form-label">Critical Threshold (%)</label>
+                            <input type="number" class="form-control" id="criticalThreshold" name="criticalThresholdPercent"
+                                   value="@Model.DiskSpace.CriticalThresholdPercent" min="0" max="100" step="0.1">
+                            <div class="form-text">
+                                Log critical alerts and reject uploads when below this percentage.
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Disk Space Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Settings -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseImport">
+                <i class="bi bi-database-add me-2"></i> Import Settings
+            </button>
+        </h2>
+        <div id="collapseImport" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["ImportMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["ImportMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveImportConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="transactionMode" class="form-label">Transaction Mode</label>
+                            <select class="form-select" id="transactionMode" name="transactionMode">
+                                @{
+                                    var transactionModes = new[] { ("PerTable", "Per Table"), ("PerBatch", "Per Batch"), ("PerCollection", "Per Collection") };
+                                    foreach (var (value, text) in transactionModes)
+                                    {
+                                        if (Model.ImportSettings.TransactionMode == value)
+                                        {
+                                            <option value="@value" selected>@text</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@value">@text</option>
+                                        }
+                                    }
+                                }
+                            </select>
+                            <div class="form-text">
+                                How to group database transactions during import. <strong>PerTable</strong> is balanced.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="duplicateHandling" class="form-label">Duplicate Handling</label>
+                            <select class="form-select" id="duplicateHandling" name="duplicateHandling">
+                                @{
+                                    var duplicateHandlings = new[] { ("Reject", "Reject"), ("Update", "Update"), ("Skip", "Skip") };
+                                    foreach (var (value, text) in duplicateHandlings)
+                                    {
+                                        if (Model.ImportSettings.DuplicateHandling == value)
+                                        {
+                                            <option value="@value" selected>@text</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@value">@text</option>
+                                        }
+                                    }
+                                }
+                            </select>
+                            <div class="form-text">
+                                How to handle duplicate InventoryIDs. <strong>Reject</strong> = fail, <strong>Update</strong> = replace, <strong>Skip</strong> = ignore.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h6 class="mb-3"><i class="bi bi-shield-check"></i> SQLite Integrity Check</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="integrityCheckMode" class="form-label">Integrity Check Mode</label>
+                            <select class="form-select" id="integrityCheckMode" name="integrityCheckMode" onchange="toggleAutoThreshold()">
+                                @{
+                                    var integrityModes = new[] {
+                                        ("Full", "Full (PRAGMA integrity_check)"),
+                                        ("Quick", "Quick (PRAGMA quick_check)"),
+                                        ("None", "None (Skip integrity check)"),
+                                        ("Auto", "Auto (Size-based)")
+                                    };
+                                    foreach (var (value, text) in integrityModes)
+                                    {
+                                        if (Model.ImportSettings.IntegrityCheckMode == value)
+                                        {
+                                            <option value="@value" selected>@text</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@value">@text</option>
+                                        }
+                                    }
+                                }
+                            </select>
+                            <div class="form-text">
+                                <strong>Full</strong> = thorough check, slower.
+                                <strong>Quick</strong> = faster, recommended.
+                                <strong>None</strong> = skip check.
+                                <strong>Auto</strong> = quick for large files, full for small.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="autoThresholdSection" style="display: @(Model.ImportSettings.IntegrityCheckMode == "Auto" ? "block" : "none");">
+                            <label for="autoIntegrityCheckThresholdMB" class="form-label">Auto Mode Threshold (MB)</label>
+                            <input type="number" class="form-control" id="autoIntegrityCheckThresholdMB" name="autoIntegrityCheckThresholdMB"
+                                   value="@Model.ImportSettings.AutoIntegrityCheckThresholdMB" min="1" max="10000" step="1">
+                            <div class="form-text">
+                                Files larger than this use quick_check; smaller files use full integrity_check.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <h6 class="mb-3"><i class="bi bi-gear-fill"></i> Automatic Processing</h6>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="hidden" name="enableAutomaticValidation" value="false">
+                            <input class="form-check-input" type="checkbox" id="enableAutomaticValidation" name="enableAutomaticValidation"
+                                   value="true" @(Model.ImportSettings.EnableAutomaticValidation ? "checked" : "") onchange="updateAutoMergeState()">
+                            <label class="form-check-label" for="enableAutomaticValidation">
+                                Enable Automatic Validation
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Automatically validate imported data after upload processing completes successfully.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="hidden" name="enableAutomaticMerge" value="false">
+                            <input class="form-check-input" type="checkbox" id="enableAutomaticMerge" name="enableAutomaticMerge"
+                                   value="true" @(Model.ImportSettings.EnableAutomaticMerge ? "checked" : "")
+                                   @(Model.ImportSettings.EnableAutomaticValidation ? "" : "disabled") onchange="confirmAutoMerge(this)">
+                            <label class="form-check-label" for="enableAutomaticMerge">
+                                Enable Automatic Merge
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            <span class="text-warning"><i class="bi bi-exclamation-triangle"></i></span>
+                            Automatically merge validated data to production tables after validation passes.
+                            <br />
+                            <small class="text-muted">Requires automatic validation. Merge only proceeds if validation passes.</small>
+                        </div>
+                    </div>
+
+                    @if (Model.ImportSettings.EnableAutomaticMerge)
+                    {
+                        <div class="alert alert-warning mb-3">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <strong>Warning:</strong> Automatic merge is enabled. Data will flow directly to production tables without manual review.
+                        </div>
+                    }
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Import Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- SQL Server Configuration -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSqlServer">
+                <i class="bi bi-database me-2"></i> SQL Server Configuration
+                @if (Model.IsDbConfigured)
+                {
+                    <span class="badge bg-success ms-2"><i class="bi bi-check"></i> Connected</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger ms-2"><i class="bi bi-x"></i> Not Configured</span>
+                }
+            </button>
+        </h2>
+        <div id="collapseSqlServer" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (!string.IsNullOrEmpty(Model.SqlServer.ConnectionTestMessage))
+                {
+                    var alertClass = Model.SqlServer.ConnectionTestMessage.StartsWith("Successfully") ? "alert-success" : "alert-danger";
+                    <div class="alert @alertClass" role="alert">
+                        @Model.SqlServer.ConnectionTestMessage
+                    </div>
+                }
+
+                <form asp-action="SaveSqlServerConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="Server" class="form-label">Server</label>
+                            <input type="text" class="form-control" id="Server" name="Server"
+                                   value="@Model.SqlServer.Server" placeholder="localhost or server\instance" required>
+                            <div class="form-text">SQL Server hostname or IP. Include instance name if needed.</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="Database" class="form-label">Database</label>
+                            <input type="text" class="form-control" id="Database" name="Database"
+                                   value="@Model.SqlServer.Database" placeholder="CLAWS" required>
+                            <div class="form-text">Database name. Will be created if it doesn't exist.</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mb-2">
+                                <input type="hidden" name="UseWindowsAuth" value="false">
+                                <input class="form-check-input" type="checkbox" id="UseWindowsAuth" name="UseWindowsAuth"
+                                       value="true" @(Model.SqlServer.UseWindowsAuth ? "checked" : "") onchange="toggleSqlAuth()">
+                                <label class="form-check-label" for="UseWindowsAuth">
+                                    Use Windows Authentication
+                                </label>
+                            </div>
+                            <div class="form-text">Use the IIS Application Pool identity to connect.</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mb-2">
+                                <input type="hidden" name="TrustServerCertificate" value="false">
+                                <input class="form-check-input" type="checkbox" id="TrustServerCertificate" name="TrustServerCertificate"
+                                       value="true" @(Model.SqlServer.TrustServerCertificate ? "checked" : "")>
+                                <label class="form-check-label" for="TrustServerCertificate">
+                                    Trust Server Certificate
+                                </label>
+                            </div>
+                            <div class="form-text">Check for self-signed certificates or dev environments.</div>
+                        </div>
+                    </div>
+
+                    <div id="sqlAuthSection" style="display: @(Model.SqlServer.UseWindowsAuth ? "none" : "block");">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="Username" class="form-label">SQL Username</label>
+                                <input type="text" class="form-control" id="Username" name="Username"
+                                       value="@Model.SqlServer.Username" placeholder="sa">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="Password" class="form-label">SQL Password</label>
+                                <input type="password" class="form-control" id="Password" name="Password"
+                                       placeholder="Enter password">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="Encrypt" class="form-label">Encryption</label>
+                            <select class="form-select" id="Encrypt" name="Encrypt">
+                                @{
+                                    var encryptOptions = new[] { "Optional", "Mandatory", "Strict" };
+                                    foreach (var opt in encryptOptions)
+                                    {
+                                        if (Model.SqlServer.Encrypt == opt)
+                                        {
+                                            <option value="@opt" selected>@opt</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@opt">@opt</option>
+                                        }
+                                    }
+                                }
+                            </select>
+                            <div class="form-text">
+                                <strong>Optional</strong> = encrypt if server requires.
+                                <strong>Mandatory</strong> = always encrypt.
+                                <strong>Strict</strong> = strict certificate validation.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save & Test Connection
+                        </button>
+                        <button type="submit" formaction="@Url.Action("TestSqlConnection")" class="btn btn-outline-secondary">
+                            <i class="bi bi-plug"></i> Test Connection
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage Configuration -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStorage">
+                <i class="bi bi-folder me-2"></i> Storage Configuration
+            </button>
+        </h2>
+        <div id="collapseStorage" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["StorageMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["StorageMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveStorageConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label for="storagePath" class="form-label">Import Storage Path</label>
+                        <input type="text" class="form-control" id="storagePath" name="storagePath"
+                               value="@Model.StoragePath" placeholder="D:\CLAWS\ImportData">
+                        <div class="form-text">
+                            Path where uploaded files are stored and processed. Recommend using a dedicated volume with sufficient space.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Storage Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Limits -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUploadLimits">
+                <i class="bi bi-cloud-upload me-2"></i> Upload Limits
+            </button>
+        </h2>
+        <div id="collapseUploadLimits" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["UploadLimitsMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["UploadLimitsMessage"]
+                    </div>
+                }
+
+                <form asp-action="SaveUploadLimitsConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="maxUploadSizeGB" class="form-label">Max Upload Size (GB)</label>
+                            <input type="number" class="form-control" id="maxUploadSizeGB" name="maxUploadSizeGB"
+                                   value="@Model.UploadLimits.MaxUploadSizeGB.ToString("F1")" min="0.1" max="100" step="0.1">
+                            <div class="form-text">Maximum ZIP file size allowed for upload.</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="maxExtractedSizeGB" class="form-label">Max Extracted Size (GB)</label>
+                            <input type="number" class="form-control" id="maxExtractedSizeGB" name="maxExtractedSizeGB"
+                                   value="@Model.UploadLimits.MaxExtractedSizeGB.ToString("F1")" min="1" max="500" step="1">
+                            <div class="form-text">Maximum extracted SQLite file size.</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="minFreeDiskSpaceGB" class="form-label">Min Free Disk Space (GB)</label>
+                            <input type="number" class="form-control" id="minFreeDiskSpaceGB" name="minFreeDiskSpaceGB"
+                                   value="@Model.UploadLimits.MinFreeDiskSpaceGB.ToString("F1")" min="1" max="500" step="1">
+                            <div class="form-text">Minimum free disk space required to accept uploads.</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="maxCompressionRatio" class="form-label">Max Compression Ratio</label>
+                            <input type="number" class="form-control" id="maxCompressionRatio" name="maxCompressionRatio"
+                                   value="@Model.UploadLimits.MaxCompressionRatio" min="10" max="1000" step="10">
+                            <div class="form-text">Maximum compression ratio (zip bomb protection).</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Upload Limits
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chunked Upload Settings -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChunkedUpload">
+                <i class="bi bi-cloud-arrow-up me-2"></i> Chunked Upload Settings
+                @if (Model.ChunkedUpload.Enabled)
+                {
+                    <span class="badge bg-success ms-2"><i class="bi bi-check"></i> Enabled</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary ms-2"><i class="bi bi-x"></i> Disabled</span>
+                }
+            </button>
+        </h2>
+        <div id="collapseChunkedUpload" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["ChunkedUploadMessage"] != null)
+                {
+                    <div class="alert alert-info" role="alert">
+                        @TempData["ChunkedUploadMessage"]
+                    </div>
+                }
+
+                <p class="text-muted small mb-3">
+                    Chunked uploads allow files larger than 4 GB to be uploaded by splitting them into smaller pieces.
+                    This bypasses IIS size limits and provides better reliability for large file uploads.
+                </p>
+
+                <form asp-action="SaveChunkedUploadConfig" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="hidden" name="enabled" value="false">
+                            <input class="form-check-input" type="checkbox" id="chunkedEnabled" name="enabled"
+                                   value="true" @(Model.ChunkedUpload.Enabled ? "checked" : "") onchange="toggleChunkedSettings()">
+                            <label class="form-check-label" for="chunkedEnabled">
+                                <strong>Enable Chunked Uploads</strong>
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            When enabled, files above the threshold will automatically use chunked upload.
+                        </div>
+                    </div>
+
+                    <div id="chunkedSettingsSection" style="display: @(Model.ChunkedUpload.Enabled ? "block" : "none");">
+                        <hr class="my-3" />
+
+                        <h6 class="mb-3"><i class="bi bi-sliders"></i> Upload Behavior</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="chunkSizeMB" class="form-label">Chunk Size (MB)</label>
+                                <input type="number" class="form-control" id="chunkSizeMB" name="chunkSizeMB"
+                                       value="@Model.ChunkedUpload.ChunkSizeMB" min="10" max="200" step="10">
+                                <div class="form-text">Size of each chunk. Smaller = more HTTP requests, larger = longer per-chunk time.</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="chunkedThresholdMB" class="form-label">Chunked Threshold (MB)</label>
+                                <input type="number" class="form-control" id="chunkedThresholdMB" name="chunkedThresholdMB"
+                                       value="@Model.ChunkedUpload.ChunkedThresholdMB" min="100" max="4000" step="100">
+                                <div class="form-text">Files larger than this use chunked upload automatically.</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="maxConcurrentChunksPerUpload" class="form-label">Parallel Chunks</label>
+                                <input type="number" class="form-control" id="maxConcurrentChunksPerUpload" name="maxConcurrentChunksPerUpload"
+                                       value="@Model.ChunkedUpload.MaxConcurrentChunksPerUpload" min="1" max="6" step="1">
+                                <div class="form-text">Concurrent chunk uploads per session (1-6).</div>
+                            </div>
+                        </div>
+
+                        <h6 class="mb-3"><i class="bi bi-people"></i> Concurrency Limits</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="maxConcurrentUploadsPerUser" class="form-label">Max Per User</label>
+                                <input type="number" class="form-control" id="maxConcurrentUploadsPerUser" name="maxConcurrentUploadsPerUser"
+                                       value="@Model.ChunkedUpload.MaxConcurrentUploadsPerUser" min="1" max="10" step="1">
+                                <div class="form-text">Maximum simultaneous chunked uploads per user.</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="maxConcurrentUploadsGlobal" class="form-label">Max Global</label>
+                                <input type="number" class="form-control" id="maxConcurrentUploadsGlobal" name="maxConcurrentUploadsGlobal"
+                                       value="@Model.ChunkedUpload.MaxConcurrentUploadsGlobal" min="1" max="50" step="1">
+                                <div class="form-text">Maximum simultaneous chunked uploads system-wide.</div>
+                            </div>
+                        </div>
+
+                        <h6 class="mb-3"><i class="bi bi-clock"></i> Session Settings</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="sessionExpirationHours" class="form-label">Session Expiration (Hours)</label>
+                                <input type="number" class="form-control" id="sessionExpirationHours" name="sessionExpirationHours"
+                                       value="@Model.ChunkedUpload.SessionExpirationHours" min="1" max="24" step="1">
+                                <div class="form-text">Hours before incomplete sessions expire.</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="expirationWarningMinutes" class="form-label">Warning Before Expiry (Minutes)</label>
+                                <input type="number" class="form-control" id="expirationWarningMinutes" name="expirationWarningMinutes"
+                                       value="@Model.ChunkedUpload.ExpirationWarningMinutes" min="5" max="60" step="5">
+                                <div class="form-text">Show warning this many minutes before expiry.</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="maxChunkRetries" class="form-label">Max Chunk Retries</label>
+                                <input type="number" class="form-control" id="maxChunkRetries" name="maxChunkRetries"
+                                       value="@Model.ChunkedUpload.MaxChunkRetries" min="1" max="10" step="1">
+                                <div class="form-text">Retry attempts for failed chunks.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Chunked Upload Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Version Requirements -->
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVersionRequirements">
+                <i class="bi bi-check2-square me-2"></i> Version Requirements
+                @if (!Model.IsDbConfigured)
+                {
+                    <span class="badge bg-secondary ms-2">DB Not Configured</span>
+                }
+            </button>
+        </h2>
+        <div id="collapseVersionRequirements" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                @if (TempData["VersionRequirementsMessage"] != null)
+                {
+                    var alertClass = TempData["VersionRequirementsMessage"]?.ToString()?.Contains("Error") == true ? "alert-danger" : "alert-success";
+                    <div class="alert @alertClass" role="alert">
+                        @TempData["VersionRequirementsMessage"]
+                    </div>
+                }
+
+                <p class="text-muted small mb-3">
+                    Minimum versions required for uploaded databases. Imports will be rejected if they don't meet these requirements.
+                    These values are stored in <code>fsapp.SchemaVersion</code>.
+                </p>
+
+                @if (Model.IsDbConfigured)
+                {
+                    <form asp-action="SaveVersionRequirementsConfig" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="minExeVersion" class="form-label">Min EXE Version (CollectNTFSPerm)</label>
+                                <input type="text" class="form-control" id="minExeVersion" name="minExeVersion"
+                                       value="@Model.VersionRequirements.MinExeVersion" placeholder="1.6.8">
+                                <div class="form-text">
+                                    Minimum CollectNTFSPerms.exe version required.
+                                    @if (Model.VersionRequirements.ExeVersionAppliedDate.HasValue)
+                                    {
+                                        <br><small class="text-muted">Last updated: @Model.VersionRequirements.ExeVersionAppliedDate.Value.ToString("g")</small>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="minDbVersion" class="form-label">Min DB Schema Version</label>
+                                <input type="text" class="form-control" id="minDbVersion" name="minDbVersion"
+                                       value="@Model.VersionRequirements.MinDbVersion" placeholder="1.6.0">
+                                <div class="form-text">
+                                    Minimum SQLite database schema version required.
+                                    @if (Model.VersionRequirements.DbVersionAppliedDate.HasValue)
+                                    {
+                                        <br><small class="text-muted">Last updated: @Model.VersionRequirements.DbVersionAppliedDate.Value.ToString("g")</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Version Requirements
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Configure SQL Server connection first to manage version requirements.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Configuration Help (always visible at bottom) -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle"></i> Configuration Help
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Database Setup</h6>
+                <p class="small">Before configuring SQL Server connection:</p>
+                <ol class="small">
+                    <li>The database exists or connection user can create it</li>
+                    <li>If using Integrated Security, grant IIS App Pool identity access</li>
+                    <li>Schema is created automatically on first connection</li>
+                </ol>
+            </div>
+            <div class="col-md-6">
+                <h6>After Making Changes</h6>
+                <p class="small">Configuration changes are saved to <code>appsettings.local.json</code> and require an application restart:</p>
+                <pre class="bg-dark text-light p-2 rounded small mb-0"><code>Restart-WebAppPool -Name "CLAWS"</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleSqlAuth() {
+            var checkbox = document.getElementById('UseWindowsAuth');
+            var authSection = document.getElementById('sqlAuthSection');
+            authSection.style.display = checkbox.checked ? 'none' : 'block';
+        }
+
+        let allExpanded = false;
+
+        function toggleAllSections() {
+            const accordionItems = document.querySelectorAll('#configAccordion .accordion-collapse');
+            const toggleBtn = document.getElementById('toggleAllBtn');
+            const toggleIcon = document.getElementById('toggleAllIcon');
+            const toggleText = document.getElementById('toggleAllText');
+
+            if (allExpanded) {
+                // Collapse all
+                accordionItems.forEach(item => {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(item);
+                    bsCollapse.hide();
+                });
+                toggleIcon.className = 'bi bi-arrows-expand';
+                toggleText.textContent = 'Expand All';
+            } else {
+                // Expand all
+                accordionItems.forEach(item => {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(item);
+                    bsCollapse.show();
+                });
+                toggleIcon.className = 'bi bi-arrows-collapse';
+                toggleText.textContent = 'Collapse All';
+            }
+
+            allExpanded = !allExpanded;
+        }
+
+        // Auto-processing dependency management
+        function updateAutoMergeState() {
+            var autoValidation = document.getElementById('enableAutomaticValidation');
+            var autoMerge = document.getElementById('enableAutomaticMerge');
+
+            if (!autoValidation.checked) {
+                // Disable and uncheck auto-merge when validation is disabled
+                autoMerge.checked = false;
+                autoMerge.disabled = true;
+            } else {
+                // Enable auto-merge checkbox when validation is enabled
+                autoMerge.disabled = false;
+            }
+        }
+
+        function confirmAutoMerge(checkbox) {
+            if (checkbox.checked) {
+                var confirmed = confirm(
+                    'WARNING: Enabling automatic merge will cause validated data to be ' +
+                    'automatically migrated to production tables without manual review.\n\n' +
+                    'This action can potentially affect production data if validation passes ' +
+                    'but data has issues not caught by validation.\n\n' +
+                    'Are you sure you want to enable automatic merge?'
+                );
+                if (!confirmed) {
+                    checkbox.checked = false;
+                }
+            }
+        }
+
+        // Initialize auto-merge state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAutoMergeState();
+        });
+
+        // LDAP settings toggle
+        function toggleLdapSettings() {
+            var checkbox = document.getElementById('ldapEnabled');
+            var settingsSection = document.getElementById('ldapSettingsSection');
+            settingsSection.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function toggleChunkedSettings() {
+            var checkbox = document.getElementById('chunkedEnabled');
+            var settingsSection = document.getElementById('chunkedSettingsSection');
+            settingsSection.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        function toggleKeymasterUsername() {
+            var checkbox = document.getElementById('ldapAllowKeymaster');
+            var usernameSection = document.getElementById('keymasterUsernameSection');
+            usernameSection.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        // Integrity check mode threshold toggle
+        function toggleAutoThreshold() {
+            var select = document.getElementById('integrityCheckMode');
+            var thresholdSection = document.getElementById('autoThresholdSection');
+            thresholdSection.style.display = select.value === 'Auto' ? 'block' : 'none';
+        }
+
+        // Partitioning settings toggle
+        function togglePartitionSettings() {
+            var checkbox = document.getElementById('partitioningEnabled');
+            var autoPrepareSection = document.getElementById('autoPreparePartitionsSection');
+            autoPrepareSection.style.display = checkbox.checked ? 'block' : 'none';
+        }
+
+        // Cloud Integration settings toggle
+        function toggleCloudIntegrationSettings() {
+            var checkbox = document.getElementById('cloudIntegrationEnabled');
+            var settingsSection = document.getElementById('cloudIntegrationSettingsSection');
+            var testButton = document.getElementById('testCloudConnectionBtn');
+            settingsSection.style.display = checkbox.checked ? 'block' : 'none';
+            testButton.disabled = !checkbox.checked;
+        }
+
+        // Test Cloud Integration LDAP connection
+        function testCloudIntegrationConnection() {
+            var testButton = document.getElementById('testCloudConnectionBtn');
+            var resultDiv = document.getElementById('cloudConnectionTestResult');
+
+            // Gather form values
+            var formData = {
+                ldapServer: document.getElementById('cloudLdapServer').value,
+                ldapPort: parseInt(document.getElementById('cloudLdapPort').value) || 636,
+                ldapUseSsl: document.getElementById('cloudLdapUseSsl').checked,
+                ldapSearchBase: document.getElementById('cloudLdapSearchBase').value,
+                serviceAccountDomain: document.getElementById('cloudServiceAccountDomain').value,
+                serviceAccountUsername: document.getElementById('cloudServiceAccountUsername').value,
+                serviceAccountPassword: document.getElementById('cloudServiceAccountPassword').value,
+                connectionTimeout: parseInt(document.getElementById('cloudConnectionTimeout').value) || 30
+            };
+
+            // Show loading state
+            testButton.disabled = true;
+            testButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Testing...';
+            resultDiv.style.display = 'none';
+
+            fetch('@Url.Action("TestCloudIntegrationConnection", "Admin")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.style.display = 'block';
+                if (data.success) {
+                    resultDiv.className = 'mt-3 alert alert-success';
+                    resultDiv.innerHTML = '<i class="bi bi-check-circle"></i> ' + data.message;
+                } else {
+                    resultDiv.className = 'mt-3 alert alert-danger';
+                    resultDiv.innerHTML = '<i class="bi bi-x-circle"></i> ' + data.message;
+                }
+            })
+            .catch(error => {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'mt-3 alert alert-danger';
+                resultDiv.innerHTML = '<i class="bi bi-x-circle"></i> Connection test failed: ' + error.message;
+            })
+            .finally(() => {
+                testButton.disabled = false;
+                testButton.innerHTML = '<i class="bi bi-plug"></i> Test Connection';
+            });
+        }
+    </script>
+}

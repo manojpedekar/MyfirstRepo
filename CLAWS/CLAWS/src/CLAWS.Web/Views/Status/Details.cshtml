@@ -1,0 +1,1439 @@
+@model UploadItem
+@{
+    ViewData["Title"] = "Upload Details";
+
+    var validationStatusClass = Model.ValidationStatus switch
+    {
+        "Passed" => "text-success",
+        "Failed" => "text-danger",
+        "InProgress" => "text-primary",
+        _ => "text-muted"
+    };
+
+    var validationBadgeClass = Model.ValidationStatus switch
+    {
+        "Passed" => "bg-success",
+        "Failed" => "bg-danger",
+        "InProgress" => "bg-primary",
+        _ => "bg-secondary"
+    };
+
+    var mergeStatusClass = Model.MergeStatus switch
+    {
+        "Merged" => "text-success",
+        "PartiallyMerged" => "text-warning",
+        "Failed" => "text-danger",
+        "InProgress" => "text-primary",
+        _ => "text-muted"
+    };
+
+    var mergeBadgeClass = Model.MergeStatus switch
+    {
+        "Merged" => "bg-success",
+        "PartiallyMerged" => "bg-warning text-dark",
+        "Failed" => "bg-danger",
+        "InProgress" => "bg-primary",
+        _ => "bg-secondary"
+    };
+
+    var isValidating = Model.ValidationStatus == "InProgress";
+    var isMerging = Model.MergeStatus == "InProgress";
+}
+
+@section Styles {
+    <style>
+        .spin {
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @@keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        /* Sortable column headers */
+        #logsTableContainer th[data-sort-column] {
+            user-select: none;
+        }
+        #logsTableContainer th[data-sort-column]:hover {
+            background-color: #e9ecef;
+        }
+        #logsTableContainer .sort-icon {
+            font-size: 0.75rem;
+            margin-left: 0.25rem;
+            opacity: 0.7;
+        }
+        #logsTableContainer th[data-sort-column]:hover .sort-icon {
+            opacity: 1;
+        }
+    </style>
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-file-earmark-zip"></i> Upload Details
+</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> @Model.OriginalFilename
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Upload ID</dt>
+                    <dd class="col-sm-8"><code>@Model.UploadId</code></dd>
+
+                    <dt class="col-sm-4">Filename</dt>
+                    <dd class="col-sm-8">@Model.OriginalFilename</dd>
+
+                    <dt class="col-sm-4">File Size</dt>
+                    <dd class="col-sm-8">@((Model.FileSizeBytes / 1024.0 / 1024.0).ToString("N2")) MB (@Model.FileSizeBytes.ToString("N0") bytes)</dd>
+
+                    <dt class="col-sm-4">Upload Type</dt>
+                    <dd class="col-sm-8">
+                        @{
+                            var uploadTypeDisplay = Model.UploadType switch
+                            {
+                                "NTFSPermissions" => "NTFS Permissions",
+                                "ADInventory" => "AD Inventory",
+                                _ => Model.UploadType ?? "Unknown"
+                            };
+                            var uploadTypeBadgeClass = Model.UploadType switch
+                            {
+                                "NTFSPermissions" => "bg-primary",
+                                "ADInventory" => "bg-info",
+                                _ => "bg-secondary"
+                            };
+                        }
+                        <span class="badge @uploadTypeBadgeClass">@uploadTypeDisplay</span>
+                    </dd>
+
+                    <dt class="col-sm-4">Import Status</dt>
+                    <dd class="col-sm-8">
+                        @{
+                            var statusClass = Model.Status switch
+                            {
+                                "Completed" => "bg-success",
+                                "Failed" => "bg-danger",
+                                "Cancelled" => "bg-warning text-dark",
+                                "Importing" => "bg-info",
+                                "Processing" => "bg-info",
+                                "Pending" => "bg-warning text-dark",
+                                "Queued" => "bg-secondary",
+                                "Validating" => "bg-primary",
+                                _ => "bg-secondary"
+                            };
+                        }
+                        <span class="badge @statusClass">@Model.Status</span>
+                        @if (!string.IsNullOrEmpty(Model.CurrentPhase))
+                        {
+                            <br><small class="text-muted">@Model.CurrentPhase</small>
+                        }
+                    </dd>
+
+                    @if (Model.Status is "Importing" or "Processing")
+                    {
+                        <dt class="col-sm-4">Progress</dt>
+                        <dd class="col-sm-8">
+                            <div class="progress" style="height: 25px;">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                     role="progressbar"
+                                     style="width: @(Model.ImportProgress ?? 0)%;"
+                                     aria-valuenow="@(Model.ImportProgress ?? 0)"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                    <span id="progress-percent">@(Model.ImportProgress ?? 0)%</span>
+                                </div>
+                            </div>
+                            <div id="progress-details" class="mt-2">
+                                <small class="text-muted">
+                                    <span id="rows-processed">0</span> / <span id="total-rows">0</span> records
+                                    <span class="mx-2">|</span>
+                                    <span id="records-per-sec">0</span> rec/s
+                                    <span class="mx-2">|</span>
+                                    ETA: <span id="eta">--:--</span>
+                                </small>
+                            </div>
+                        </dd>
+                    }
+
+                    <dt class="col-sm-4">Uploaded At</dt>
+                    <dd class="col-sm-8"><span data-utc="@Model.UploadedAt.ToString("o")">@Model.UploadedAt.ToString("F")</span></dd>
+
+                    @if (Model.CompletedAt.HasValue)
+                    {
+                        <dt class="col-sm-4">Import Completed</dt>
+                        <dd class="col-sm-8"><span data-utc="@Model.CompletedAt.Value.ToString("o")">@Model.CompletedAt.Value.ToString("F")</span></dd>
+
+                        <dt class="col-sm-4">Duration</dt>
+                        <dd class="col-sm-8">@((Model.CompletedAt.Value - Model.UploadedAt).ToString(@"hh\:mm\:ss"))</dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+                    {
+                        <dt class="col-sm-4">Message</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.Status == "Failed")
+                            {
+                                <div class="alert alert-danger mb-0">
+                                    <i class="bi bi-exclamation-triangle"></i> @Model.StatusMessage
+                                </div>
+                                @if (Model.IsDuplicateError)
+                                {
+                                    <div class="alert alert-warning mt-2 mb-0">
+                                        <h6 class="alert-heading"><i class="bi bi-info-circle"></i> How to Resolve</h6>
+                                        <p class="mb-2">This upload was rejected because one or more InventoryIDs already exist in the system.</p>
+                                        <ul class="mb-0">
+                                            <li><strong>If duplicate is in staging (pending merge):</strong> Go to All Uploads, find the previous import, and delete it before re-uploading.</li>
+                                            <li><strong>If duplicate is in production (already merged):</strong> This data has already been merged. Contact an administrator if you need to re-import.</li>
+                                        </ul>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <span>@Model.StatusMessage</span>
+                            }
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        @if (Model.Status == "Completed")
+        {
+            @if (Model.UploadType == "ADInventory" && Model.DomainCollections.Any())
+            {
+                <!-- ADInventory: Show AD Domains card -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-diagram-3"></i> AD Domains (@Model.DomainCollections.Count)</span>
+                        @if (Model.TotalRecordsImported.HasValue)
+                        {
+                            <span class="badge bg-secondary">@Model.TotalRecordsImported.Value.ToString("N0") records</span>
+                        }
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Domain Name</th>
+                                    <th>Collected</th>
+                                    <th class="text-end">Records</th>
+                                    <th class="text-center" style="width: 70px;">Logs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var domain in Model.DomainCollections.OrderBy(d => d.DomainName))
+                                {
+                                    <tr>
+                                        <td>@domain.DomainName</td>
+                                        <td>
+                                            @if (domain.CollectionDateTime.HasValue)
+                                            {
+                                                <span data-utc="@domain.CollectionDateTime.Value.ToString("o")" data-format="short">@domain.CollectionDateTime.Value.ToString("g")</span>
+                                            }
+                                            else
+                                            {
+                                                <text>N/A</text>
+                                            }
+                                        </td>
+                                        <td class="text-end">@domain.TotalRecords.ToString("N0")</td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    onclick="showADDomainLogs('@Model.UploadId', '@domain.CollectionId', '@domain.DomainName')"
+                                                    title="View collection logs for this domain">
+                                                <i class="bi bi-journal-text"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+            else if (Model.UploadType != "ADInventory" && Model.Inventories.Any())
+            {
+                <!-- NTFSPermissions: Show Inventories card -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="bi bi-collection"></i> Inventories (@Model.Inventories.Count)
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Computer</th>
+                                    <th>Scan Path</th>
+                                    <th>Collected</th>
+                                    <th class="text-end">Records</th>
+                                    <th class="text-center" style="width: 70px;">Logs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var inv in Model.Inventories)
+                                {
+                                    <tr>
+                                        <td>@(inv.ComputerName ?? "Unknown")</td>
+                                        <td><small class="text-muted">@(inv.ScanPath ?? "N/A")</small></td>
+                                        <td>
+                                            @if (inv.CollectionDateTime.HasValue)
+                                            {
+                                                <span data-utc="@inv.CollectionDateTime.Value.ToString("o")" data-format="short">@inv.CollectionDateTime.Value.ToString("g")</span>
+                                            }
+                                            else
+                                            {
+                                                <text>N/A</text>
+                                            }
+                                        </td>
+                                        <td class="text-end">@inv.TotalRecords.ToString("N0")</td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    onclick="showCollectionLogs('@Model.UploadId', '@inv.InventoryId')"
+                                                    title="View collection logs for this inventory">
+                                                <i class="bi bi-journal-text"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+
+        @if (Model.Status == "Completed")
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <i class="bi bi-clipboard-check"></i> Validation & Merge Status
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Validation</h6>
+                            <p class="mb-1">
+                                <span class="badge @validationBadgeClass">@Model.ValidationStatus</span>
+                                @if (Model.ValidationCompletedAt.HasValue)
+                                {
+                                    <small class="text-muted ms-2"><span data-utc="@Model.ValidationCompletedAt.Value.ToString("o")" data-format="short">@Model.ValidationCompletedAt.Value.ToString("g")</span></small>
+                                }
+                            </p>
+                            @if (Model.ValidationStatus == "Failed")
+                            {
+                                <a href="@Url.Action("Logs", "Admin", new { uploadId = Model.UploadId, category = "Validation" })"
+                                   class="btn btn-sm btn-outline-danger" target="_blank">
+                                    <i class="bi bi-journal-text"></i> View Validation Errors
+                                </a>
+                            }
+                            else if (!string.IsNullOrEmpty(Model.ValidationMessage))
+                            {
+                                <small class="@validationStatusClass">@Model.ValidationMessage</small>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Merge</h6>
+                            <p class="mb-1">
+                                <span class="badge @mergeBadgeClass">@Model.MergeStatus</span>
+                                @if (Model.MergeCompletedAt.HasValue)
+                                {
+                                    <small class="text-muted ms-2"><span data-utc="@Model.MergeCompletedAt.Value.ToString("o")" data-format="short">@Model.MergeCompletedAt.Value.ToString("g")</span></small>
+                                }
+                            </p>
+                            @if (Model.MergeStatus == "Failed")
+                            {
+                                <a href="@Url.Action("Logs", "Admin", new { uploadId = Model.UploadId, category = "Import" })"
+                                   class="btn btn-sm btn-outline-danger" target="_blank">
+                                    <i class="bi bi-journal-text"></i> View Merge Errors
+                                </a>
+                            }
+                            else if (!string.IsNullOrEmpty(Model.MergeMessage))
+                            {
+                                <small class="@mergeStatusClass">@Model.MergeMessage</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-gear"></i> Actions
+            </div>
+            <div class="card-body">
+                @if (Model.Status is "Pending" or "Processing" or "Queued" or "Uploading" or "Importing")
+                {
+                    <form asp-controller="Upload" asp-action="Cancel" asp-route-id="@Model.UploadId" method="post" class="mb-2">
+                        <button type="submit" class="btn btn-warning w-100"
+                                onclick="return confirm('Are you sure you want to cancel? Any data already imported will remain in the database.');">
+                            <i class="bi bi-x-circle"></i> Cancel @(Model.Status is "Importing" or "Processing" ? "Processing" : "Upload")
+                        </button>
+                    </form>
+                }
+
+                @if (Model.Status == "Pending")
+                {
+                    <div class="alert alert-warning mb-2">
+                        <i class="bi bi-clock"></i> Waiting in queue...
+                        <br><small>Processing will begin when resources are available.</small>
+                    </div>
+                }
+
+                @if (Model.Status is "Importing" or "Processing")
+                {
+                    <div class="alert alert-info mb-2">
+                        <i class="bi bi-hourglass-split"></i> <span id="status-text">@(Model.Status == "Importing" ? "Import" : "Processing") in progress...</span>
+                        <br><small id="current-phase" class="text-muted">@Model.CurrentPhase</small>
+                    </div>
+                }
+
+                @if (Model.Status == "Completed")
+                {
+                    @if (Model.MergeStatus == "Merged")
+                    {
+                        <div class="alert alert-success mb-2">
+                            <i class="bi bi-check-circle-fill"></i> <strong>Merge Complete</strong>
+                            <br><small>All data has been migrated to fsapp schema.</small>
+                        </div>
+                    }
+                    else if (isValidating || isMerging)
+                    {
+                        <div class="alert alert-info mb-2">
+                            <i class="bi bi-arrow-repeat spin"></i> <strong>@(isValidating ? "Validating..." : "Merging...")</strong>
+                            <br><small class="text-muted">@(Model.ValidationMessage ?? Model.MergeMessage ?? "Please wait...")</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-database-add"></i> Merge to fsapp</span>
+                                @if (Model.ValidationStatus == "Passed")
+                                {
+                                    <span class="badge bg-success"><i class="bi bi-check"></i> Validated</span>
+                                }
+                                else if (Model.ValidationStatus == "Failed")
+                                {
+                                    <span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>
+                                }
+                            </div>
+                            <div class="card-body">
+                                <p class="small text-muted mb-2">
+                                    Validate and merge imported data to the fsapp schema for reporting.
+                                </p>
+                                <form id="validateAndMergeForm" asp-controller="Status" asp-action="ValidateAndMerge" asp-route-id="@Model.UploadId" method="post" class="mb-2">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-arrow-right-circle"></i> Validate & Merge
+                                    </button>
+                                </form>
+                                <div class="btn-group w-100" role="group">
+                                    <form id="validateOnlyForm" asp-controller="Status" asp-action="Validate" asp-route-id="@Model.UploadId" method="post" style="flex: 1;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-secondary w-100" title="Run validation only">
+                                            <i class="bi bi-check2-square"></i> Validate
+                                        </button>
+                                    </form>
+                                    <form id="mergeOnlyForm" asp-controller="Status" asp-action="Merge" asp-route-id="@Model.UploadId" method="post" style="flex: 1;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-secondary w-100" title="Merge without validation (not recommended)">
+                                            <i class="bi bi-box-arrow-in-right"></i> Merge
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (Model.Status == "Failed")
+                {
+                    <div class="alert alert-danger mb-2">
+                        <i class="bi bi-exclamation-triangle"></i> Import failed. Check the error message for details.
+                    </div>
+                }
+
+                @if (Model.Status is "Failed" or "Completed" or "Cancelled")
+                {
+                    <form asp-controller="Status" asp-action="Delete" asp-route-id="@Model.UploadId" method="post" class="mb-2">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger w-100"
+                                onclick="return confirm('Are you sure you want to delete this upload and all associated files? This action cannot be undone.');">
+                            <i class="bi bi-trash"></i> Delete Upload
+                        </button>
+                    </form>
+                }
+
+                @if (Model.Status == "Completed" && Model.UploadType != "ADInventory" && Model.Inventories.Any())
+                {
+                    <button type="button" class="btn btn-outline-info w-100 mb-2"
+                            onclick="showCollectionLogs('@Model.UploadId')">
+                        <i class="bi bi-journal-text"></i> View Collection Logs
+                    </button>
+                }
+                @if (Model.Status == "Completed" && Model.UploadType == "ADInventory" && Model.DomainCollections.Any())
+                {
+                    <button type="button" class="btn btn-outline-info w-100 mb-2"
+                            onclick="showAllADDomainLogs('@Model.UploadId')">
+                        <i class="bi bi-journal-text"></i> View All Collection Logs
+                    </button>
+                }
+
+                <a asp-controller="Status" asp-action="Index" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-left"></i> Back to My Uploads
+                </a>
+            </div>
+        </div>
+
+        @if (Model.Status is "Pending")
+        {
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-arrow-repeat"></i> Auto-Refresh</span>
+                    <span id="countdown-badge" class="badge bg-primary">5s</span>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="autoRefreshToggle" checked>
+                        <label class="form-check-label" for="autoRefreshToggle">Enable auto-refresh</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary w-100" onclick="location.reload();">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Now
+                    </button>
+                </div>
+            </div>
+        }
+        @if (Model.Status is "Processing" or "Importing")
+        {
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-activity"></i> Live Progress</span>
+                    <span id="poll-status" class="badge bg-success">Live</span>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="liveUpdateToggle" checked>
+                        <label class="form-check-label" for="liveUpdateToggle">Enable live updates</label>
+                    </div>
+                    <small class="text-muted">Updates every second</small>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Status is "Pending")
+{
+    <script>
+        (function() {
+            const REFRESH_INTERVAL = 5; // seconds
+            let countdown = REFRESH_INTERVAL;
+            let autoRefreshEnabled = true;
+            let intervalId = null;
+
+            const toggle = document.getElementById('autoRefreshToggle');
+            const badge = document.getElementById('countdown-badge');
+
+            function updateCountdown() {
+                if (!autoRefreshEnabled) return;
+
+                countdown--;
+                badge.textContent = countdown + 's';
+
+                if (countdown <= 0) {
+                    location.reload();
+                }
+            }
+
+            function startAutoRefresh() {
+                countdown = REFRESH_INTERVAL;
+                badge.textContent = countdown + 's';
+                badge.classList.remove('bg-secondary');
+                badge.classList.add('bg-primary');
+                intervalId = setInterval(updateCountdown, 1000);
+            }
+
+            function stopAutoRefresh() {
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+                badge.textContent = 'Off';
+                badge.classList.remove('bg-primary');
+                badge.classList.add('bg-secondary');
+            }
+
+            if (toggle) {
+                toggle.addEventListener('change', function() {
+                    autoRefreshEnabled = this.checked;
+                    if (autoRefreshEnabled) {
+                        startAutoRefresh();
+                    } else {
+                        stopAutoRefresh();
+                    }
+                });
+            }
+
+            // Start auto-refresh on page load
+            startAutoRefresh();
+        })();
+    </script>
+}
+
+@if (Model.Status is "Processing" or "Importing")
+{
+    @section Scripts {
+    <script>
+        (function() {
+            const uploadId = '@Model.UploadId';
+            let liveUpdateEnabled = true;
+            let signalRConnected = false;
+
+            console.log("Details page initialized for upload:", uploadId);
+
+            // UI elements
+            const toggle = document.getElementById('liveUpdateToggle');
+            const pollStatus = document.getElementById('poll-status');
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            const rowsProcessed = document.getElementById('rows-processed');
+            const totalRows = document.getElementById('total-rows');
+            const recordsPerSec = document.getElementById('records-per-sec');
+            const etaEl = document.getElementById('eta');
+            const currentPhase = document.getElementById('current-phase');
+            const statusText = document.getElementById('status-text');
+            const messageEl = document.querySelector('dd .text-muted span, dd span:not([id])');
+
+            // Track for records/sec calculation
+            let lastRowsProcessed = 0;
+            let lastUpdateTime = Date.now();
+
+            function formatNumber(num) {
+                return num.toLocaleString();
+            }
+
+            function formatEta(seconds) {
+                if (!seconds || seconds <= 0) return '--:--';
+                if (seconds > 3600) {
+                    const hours = Math.floor(seconds / 3600);
+                    const mins = Math.floor((seconds % 3600) / 60);
+                    return hours + 'h ' + mins + 'm';
+                }
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return mins + ':' + secs.toString().padStart(2, '0');
+            }
+
+            function updateProgress(data) {
+                console.log('Progress update received:', data);
+
+                // Update progress bar
+                if (progressBar) {
+                    progressBar.style.width = data.percent + '%';
+                    progressBar.setAttribute('aria-valuenow', data.percent);
+                }
+                if (progressPercent) {
+                    progressPercent.textContent = data.percent + '%';
+                }
+
+                // Parse rows from message if available (format: "Importing X: N / M rows")
+                const messageMatch = data.message?.match(/:\s*([\d,]+)\s*\/\s*([\d,]+)\s*rows/i);
+                if (messageMatch) {
+                    const currentRows = parseInt(messageMatch[1].replace(/,/g, ''));
+                    const totalRowsVal = parseInt(messageMatch[2].replace(/,/g, ''));
+
+                    if (rowsProcessed) rowsProcessed.textContent = formatNumber(currentRows);
+                    if (totalRows) totalRows.textContent = formatNumber(totalRowsVal);
+
+                    // Calculate records per second
+                    const now = Date.now();
+                    const timeDiff = (now - lastUpdateTime) / 1000;
+                    if (timeDiff > 0 && currentRows > lastRowsProcessed) {
+                        const rps = Math.round((currentRows - lastRowsProcessed) / timeDiff);
+                        if (recordsPerSec) recordsPerSec.textContent = formatNumber(rps);
+
+                        // Calculate ETA
+                        if (rps > 0 && totalRowsVal > currentRows) {
+                            const remaining = totalRowsVal - currentRows;
+                            const eta = Math.ceil(remaining / rps);
+                            if (etaEl) etaEl.textContent = formatEta(eta);
+                        }
+                    }
+                    lastRowsProcessed = currentRows;
+                    lastUpdateTime = now;
+                }
+
+                // Update phase
+                if (currentPhase && data.currentTable) {
+                    currentPhase.textContent = data.currentTable;
+                }
+
+                // Flash indicator
+                flashPollStatus();
+
+                // Check if complete
+                if (data.phase === 'Complete' || data.phase === 'Failed' || data.phase === 'Cancelled') {
+                    setTimeout(function() { location.reload(); }, 500);
+                }
+            }
+
+            function flashPollStatus() {
+                if (pollStatus) {
+                    pollStatus.classList.add('bg-info');
+                    pollStatus.classList.remove('bg-success');
+                    setTimeout(() => {
+                        pollStatus.classList.remove('bg-info');
+                        pollStatus.classList.add('bg-success');
+                    }, 200);
+                }
+            }
+
+            function setConnectionStatus(connected) {
+                signalRConnected = connected;
+                if (pollStatus) {
+                    if (connected) {
+                        pollStatus.textContent = 'Live';
+                        pollStatus.classList.remove('bg-secondary', 'bg-danger');
+                        pollStatus.classList.add('bg-success');
+                    } else {
+                        pollStatus.textContent = 'Connecting...';
+                        pollStatus.classList.remove('bg-success', 'bg-danger');
+                        pollStatus.classList.add('bg-secondary');
+                    }
+                }
+            }
+
+            // Initialize SignalR connection
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/upload")
+                .withAutomaticReconnect([0, 1000, 2000, 5000, 10000])
+                .build();
+
+            connection.on("ProgressUpdate", function(data) {
+                console.log("ProgressUpdate received:", data);
+                console.log("Comparing uploadId:", { received: data.uploadId, expected: uploadId, match: data.uploadId === uploadId });
+
+                if (data.uploadId === uploadId && liveUpdateEnabled) {
+                    console.log("Update matches - calling updateProgress");
+                    updateProgress(data);
+                } else if (data.uploadId !== uploadId) {
+                    console.log("Upload ID mismatch - ignoring");
+                }
+            });
+
+            connection.onreconnecting(function() {
+                console.log("SignalR reconnecting...");
+                setConnectionStatus(false);
+            });
+
+            connection.onreconnected(function() {
+                console.log("SignalR reconnected");
+                setConnectionStatus(true);
+                // Re-subscribe after reconnection
+                connection.invoke("SubscribeToUpload", uploadId)
+                    .catch(function(err) { console.error("Failed to re-subscribe:", err); });
+            });
+
+            connection.onclose(function() {
+                console.log("SignalR connection closed");
+                setConnectionStatus(false);
+            });
+
+            // Start connection
+            connection.start()
+                .then(function() {
+                    console.log("SignalR connected for details page");
+                    setConnectionStatus(true);
+                    return connection.invoke("SubscribeToUpload", uploadId);
+                })
+                .then(function() {
+                    console.log("Subscribed to upload:", uploadId);
+                })
+                .catch(function(err) {
+                    console.error("SignalR connection failed:", err);
+                    setConnectionStatus(false);
+                });
+
+            // Handle toggle
+            if (toggle) {
+                toggle.addEventListener('change', function() {
+                    liveUpdateEnabled = this.checked;
+                    if (!liveUpdateEnabled && pollStatus) {
+                        pollStatus.textContent = 'Paused';
+                        pollStatus.classList.remove('bg-success');
+                        pollStatus.classList.add('bg-secondary');
+                    } else if (liveUpdateEnabled && signalRConnected && pollStatus) {
+                        pollStatus.textContent = 'Live';
+                        pollStatus.classList.remove('bg-secondary');
+                        pollStatus.classList.add('bg-success');
+                    }
+                });
+            }
+        })();
+    </script>
+    }
+}
+
+@if (isValidating || isMerging)
+{
+    <script>
+        // Auto-refresh when validation/merge is in progress
+        (function() {
+            const REFRESH_INTERVAL = 5000; // 5 seconds
+            setTimeout(function() {
+                location.reload();
+            }, REFRESH_INTERVAL);
+        })();
+    </script>
+}
+
+<script>
+    // Handle validation/merge forms asynchronously
+    // This allows the page to refresh immediately without waiting for the long operation
+    (function() {
+        const forms = ['validateAndMergeForm', 'validateOnlyForm', 'mergeOnlyForm'];
+        const validationStatus = '@Model.ValidationStatus';
+        const confirmMessages = {
+            'validateAndMergeForm': 'This will validate and merge all collections from this upload to the fsapp schema. Continue?',
+            'validateOnlyForm': null,
+            // Only show warning if validation hasn't passed
+            'mergeOnlyForm': validationStatus === 'Passed' ? null : 'Warning: Merging without validation may fail if there are data integrity issues. Continue anyway?'
+        };
+
+        forms.forEach(function(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // Show confirmation if needed
+                const confirmMsg = confirmMessages[formId];
+                if (confirmMsg && !confirm(confirmMsg)) {
+                    return;
+                }
+
+                // Disable button and show loading state
+                const button = form.querySelector('button[type="submit"]');
+                const originalContent = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Starting...';
+
+                // Submit form via fetch (fire-and-forget)
+                const formData = new FormData(form);
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                }).catch(function(err) {
+                    // Ignore errors - the operation continues in the background
+                    console.log('Request sent (response ignored):', err);
+                });
+
+                // Reload page after short delay to show InProgress status
+                setTimeout(function() {
+                    location.reload();
+                }, 1500);
+            });
+        });
+    })();
+</script>
+
+<!-- Collection Logs Modal -->
+<div class="modal fade" id="collectionLogsModal" tabindex="-1" aria-labelledby="collectionLogsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="collectionLogsModalLabel">
+                    <i class="bi bi-journal-text"></i> Collection Logs
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filters Row -->
+                <div class="row mb-3 g-2">
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="logsSeverityFilter">
+                            <option value="">All Severities</option>
+                            <option value="ERROR">Error</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="INFO">Info</option>
+                            <option value="SUCCESS">Success</option>
+                            <option value="DEBUG">Debug</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="logsSourceFilter">
+                            <option value="">All Sources</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="logsSearchFilter" placeholder="Search messages...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="applyLogsFilter()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearLogsFilter()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status/Info Bar -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">
+                        <span id="logsInventoryLabel"></span>
+                        <span class="badge bg-secondary ms-2" id="logsDataSource"></span>
+                    </small>
+                    <small class="text-muted">
+                        Showing <strong id="logsShowing">0</strong> of <strong id="logsTotalItems">0</strong> logs
+                    </small>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div id="logsLoading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading collection logs...</p>
+                </div>
+
+                <!-- Error Message -->
+                <div id="logsError" class="alert alert-danger" style="display: none;">
+                    <i class="bi bi-exclamation-triangle"></i> <span id="logsErrorMessage"></span>
+                </div>
+
+                <!-- No Logs Message -->
+                <div id="logsEmpty" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-info-circle"></i> No collection logs found for this filter.
+                </div>
+
+                <!-- Logs Table -->
+                <div id="logsTableContainer" style="display: none;">
+                    <table class="table table-sm table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 150px; cursor: pointer;" onclick="sortLogsBy('Timestamp')" data-sort-column="Timestamp">
+                                    Timestamp <i class="bi bi-arrow-up sort-icon" id="sort-icon-Timestamp"></i>
+                                </th>
+                                <th style="width: 80px; cursor: pointer;" onclick="sortLogsBy('Severity')" data-sort-column="Severity">
+                                    Severity <i class="bi sort-icon" id="sort-icon-Severity"></i>
+                                </th>
+                                <th style="width: 120px; cursor: pointer;" onclick="sortLogsBy('Source')" data-sort-column="Source">
+                                    Source <i class="bi sort-icon" id="sort-icon-Source"></i>
+                                </th>
+                                <th style="cursor: pointer;" onclick="sortLogsBy('Message')" data-sort-column="Message">
+                                    Message <i class="bi sort-icon" id="sort-icon-Message"></i>
+                                </th>
+                                <th style="width: 60px; text-align: center;">View</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav id="logsPagination" class="mt-3" style="display: none;">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                    </ul>
+                </nav>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Detail Modal -->
+<div class="modal fade" id="logDetailModal" tabindex="-1" aria-labelledby="logDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logDetailModalLabel">
+                    <i class="bi bi-file-text"></i> Log Entry Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Event ID</dt>
+                    <dd class="col-sm-9"><code id="detailEventId"></code></dd>
+
+                    <dt class="col-sm-3">Timestamp</dt>
+                    <dd class="col-sm-9" id="detailTimestamp"></dd>
+
+                    <dt class="col-sm-3">Severity</dt>
+                    <dd class="col-sm-9" id="detailSeverity"></dd>
+
+                    <dt class="col-sm-3">Source/Category</dt>
+                    <dd class="col-sm-9" id="detailSource"></dd>
+
+                    <dt class="col-sm-3">Message</dt>
+                    <dd class="col-sm-9">
+                        <div class="bg-light p-2 rounded" style="white-space: pre-wrap; word-break: break-word;" id="detailMessage"></div>
+                    </dd>
+
+                    <dt class="col-sm-3">Path</dt>
+                    <dd class="col-sm-9"><code id="detailPath"></code></dd>
+
+                    <dt class="col-sm-3">Error Code</dt>
+                    <dd class="col-sm-9" id="detailErrorCode"></dd>
+                </dl>
+
+                <!-- AD-specific fields section -->
+                <div id="adFieldsSection" style="display: none;">
+                    <hr class="my-3">
+                    <h6 class="mb-3"><i class="bi bi-diagram-3"></i> AD Inventory Details</h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Context</dt>
+                        <dd class="col-sm-9">
+                            <div class="bg-light p-2 rounded" style="white-space: pre-wrap; word-break: break-word;" id="detailContext"></div>
+                        </dd>
+
+                        <dt class="col-sm-3">Exception Type</dt>
+                        <dd class="col-sm-9"><code id="detailExceptionType"></code></dd>
+
+                        <dt class="col-sm-3">Exception Message</dt>
+                        <dd class="col-sm-9">
+                            <div class="bg-danger bg-opacity-10 p-2 rounded text-danger" style="white-space: pre-wrap; word-break: break-word;" id="detailExceptionMessage"></div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Collection Logs Modal functionality
+    (function() {
+        let currentUploadId = null;
+        let currentInventoryId = null;
+        let currentADCollectionId = null; // For AD domain logs
+        let currentPage = 1;
+        let currentSortBy = 'Timestamp';
+        let currentDescending = false; // Default: oldest to newest
+        const pageSize = 50;
+
+        // DOM elements
+        const modal = document.getElementById('collectionLogsModal');
+        const modalLabel = document.getElementById('collectionLogsModalLabel');
+        const severityFilter = document.getElementById('logsSeverityFilter');
+        const sourceFilter = document.getElementById('logsSourceFilter');
+        const searchFilter = document.getElementById('logsSearchFilter');
+        const inventoryLabel = document.getElementById('logsInventoryLabel');
+        const dataSource = document.getElementById('logsDataSource');
+        const showingEl = document.getElementById('logsShowing');
+        const totalItemsEl = document.getElementById('logsTotalItems');
+        const loadingEl = document.getElementById('logsLoading');
+        const errorEl = document.getElementById('logsError');
+        const errorMessageEl = document.getElementById('logsErrorMessage');
+        const emptyEl = document.getElementById('logsEmpty');
+        const tableContainer = document.getElementById('logsTableContainer');
+        const tableBody = document.getElementById('logsTableBody');
+        const pagination = document.getElementById('logsPagination');
+
+        // Make function available globally
+        window.showCollectionLogs = function(uploadId, inventoryId) {
+            currentUploadId = uploadId;
+            currentInventoryId = inventoryId || null;
+            currentADCollectionId = null; // Reset AD collection ID
+            currentPage = 1;
+            currentSortBy = 'Timestamp';
+            currentDescending = false; // Reset to default: oldest to newest
+
+            // Reset filters
+            severityFilter.value = '';
+            sourceFilter.innerHTML = '<option value="">All Sources</option>';
+            searchFilter.value = '';
+
+            // Update modal title
+            if (inventoryId) {
+                modalLabel.innerHTML = '<i class="bi bi-journal-text"></i> Collection Logs (Inventory)';
+            } else {
+                modalLabel.innerHTML = '<i class="bi bi-journal-text"></i> Collection Logs (All Inventories)';
+            }
+
+            // Update sort icons to show default state
+            updateSortIcons();
+
+            // Show modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Load logs
+            loadLogs();
+        };
+
+        // Function for AD domain logs
+        window.showADDomainLogs = function(uploadId, collectionId, domainName) {
+            currentUploadId = uploadId;
+            currentInventoryId = null; // Not used for AD domains
+            currentADCollectionId = collectionId;
+            currentPage = 1;
+            currentSortBy = 'Timestamp';
+            currentDescending = false; // Reset to default: oldest to newest
+
+            // Reset filters
+            severityFilter.value = '';
+            sourceFilter.innerHTML = '<option value="">All Sources</option>';
+            searchFilter.value = '';
+
+            // Update modal title with domain name
+            modalLabel.innerHTML = '<i class="bi bi-journal-text"></i> Collection Logs - ' + escapeHtml(domainName);
+
+            // Update sort icons to show default state
+            updateSortIcons();
+
+            // Show modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Load logs
+            loadLogs();
+        };
+
+        // Function for all AD domain logs
+        window.showAllADDomainLogs = function(uploadId) {
+            currentUploadId = uploadId;
+            currentInventoryId = null;
+            currentADCollectionId = 'all'; // Special marker for all domains
+            currentPage = 1;
+            currentSortBy = 'Timestamp';
+            currentDescending = false;
+
+            // Reset filters
+            severityFilter.value = '';
+            sourceFilter.innerHTML = '<option value="">All Sources</option>';
+            searchFilter.value = '';
+
+            // Update modal title
+            modalLabel.innerHTML = '<i class="bi bi-journal-text"></i> Collection Logs (All AD Domains)';
+
+            // Update sort icons to show default state
+            updateSortIcons();
+
+            // Show modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Load logs
+            loadLogs();
+        };
+
+        window.sortLogsBy = function(column) {
+            if (currentSortBy === column) {
+                // Toggle direction if same column
+                currentDescending = !currentDescending;
+            } else {
+                // New column, default to ascending
+                currentSortBy = column;
+                currentDescending = false;
+            }
+            currentPage = 1;
+            updateSortIcons();
+            loadLogs();
+        };
+
+        function updateSortIcons() {
+            const columns = ['Timestamp', 'Severity', 'Source', 'Message'];
+            columns.forEach(col => {
+                const icon = document.getElementById('sort-icon-' + col);
+                if (icon) {
+                    if (col === currentSortBy) {
+                        icon.className = 'bi sort-icon ' + (currentDescending ? 'bi-arrow-down' : 'bi-arrow-up');
+                    } else {
+                        icon.className = 'bi sort-icon'; // No arrow
+                    }
+                }
+            });
+        }
+
+        window.applyLogsFilter = function() {
+            currentPage = 1;
+            loadLogs();
+        };
+
+        window.clearLogsFilter = function() {
+            severityFilter.value = '';
+            sourceFilter.value = '';
+            searchFilter.value = '';
+            currentPage = 1;
+            loadLogs();
+        };
+
+        window.goToLogsPage = function(page) {
+            currentPage = page;
+            loadLogs();
+        };
+
+        // Apply filter on Enter key
+        searchFilter.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyLogsFilter();
+            }
+        });
+
+        // Apply filter on dropdown change
+        severityFilter.addEventListener('change', applyLogsFilter);
+        sourceFilter.addEventListener('change', applyLogsFilter);
+
+        async function loadLogs() {
+            // Show loading, hide others
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            emptyEl.style.display = 'none';
+            tableContainer.style.display = 'none';
+            pagination.style.display = 'none';
+
+            try {
+                // Build URL based on whether this is an AD domain or regular inventory log
+                let url = `/api/collection-logs/${currentUploadId}`;
+                if (currentADCollectionId === 'all') {
+                    // All AD domain logs
+                    url += `/ad-domain`;
+                } else if (currentADCollectionId !== null) {
+                    // Specific AD domain logs
+                    url += `/ad-domain/${currentADCollectionId}`;
+                } else if (currentInventoryId) {
+                    url += `/${currentInventoryId}`;
+                }
+
+                const params = new URLSearchParams();
+                params.append('page', currentPage);
+                params.append('pageSize', pageSize);
+                params.append('sortBy', currentSortBy);
+                params.append('descending', currentDescending);
+
+                if (severityFilter.value) {
+                    params.append('severity', severityFilter.value);
+                }
+                if (sourceFilter.value) {
+                    params.append('source', sourceFilter.value);
+                }
+                if (searchFilter.value.trim()) {
+                    params.append('search', searchFilter.value.trim());
+                }
+
+                url += '?' + params.toString();
+
+                const response = await fetch(url, {
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Unknown error');
+                }
+
+                const data = result.data;
+
+                // Update info bar
+                inventoryLabel.textContent = data.inventoryLabel || 'Unknown';
+                // Display the actual schema name with staging/merged suffix
+                const schemaDisplay = data.dataSource + (data.isMerged ? ' (Merged)' : ' (Staging)');
+                dataSource.textContent = schemaDisplay;
+                dataSource.className = data.isMerged ? 'badge bg-success ms-2' : 'badge bg-warning text-dark ms-2';
+
+                // Update source filter options
+                if (data.availableSources && data.availableSources.length > 0) {
+                    const currentSource = sourceFilter.value;
+                    sourceFilter.innerHTML = '<option value="">All Sources</option>';
+                    data.availableSources.forEach(source => {
+                        const option = document.createElement('option');
+                        option.value = source;
+                        option.textContent = source;
+                        sourceFilter.appendChild(option);
+                    });
+                    sourceFilter.value = currentSource;
+                }
+
+                // Update counts
+                const startItem = (data.page - 1) * data.pageSize + 1;
+                const endItem = Math.min(data.page * data.pageSize, data.totalItems);
+                showingEl.textContent = data.totalItems > 0 ? `${startItem}-${endItem}` : '0';
+                totalItemsEl.textContent = data.totalItems.toLocaleString();
+
+                loadingEl.style.display = 'none';
+
+                if (data.logs.length === 0) {
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+
+                // Render logs table
+                tableBody.innerHTML = '';
+                data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+
+                    // Timestamp
+                    const timestampCell = document.createElement('td');
+                    const timestamp = new Date(log.timestamp);
+                    timestampCell.textContent = timestamp.toLocaleString();
+                    timestampCell.title = log.timestamp;
+                    row.appendChild(timestampCell);
+
+                    // Severity
+                    const severityCell = document.createElement('td');
+                    const badge = document.createElement('span');
+                    badge.className = 'badge ' + log.severityBadgeClass;
+                    badge.textContent = log.severity;
+                    severityCell.appendChild(badge);
+                    row.appendChild(severityCell);
+
+                    // Source
+                    const sourceCell = document.createElement('td');
+                    sourceCell.innerHTML = '<small class="text-muted">' + escapeHtml(log.source) + '</small>';
+                    row.appendChild(sourceCell);
+
+                    // Message
+                    const messageCell = document.createElement('td');
+                    let messageHtml = escapeHtml(log.message);
+                    if (log.path) {
+                        messageHtml += '<br><small class="text-muted"><i class="bi bi-folder2"></i> ' + escapeHtml(log.path) + '</small>';
+                    }
+                    if (log.errorCode) {
+                        messageHtml += '<br><small class="text-danger">Error Code: ' + log.errorCode + '</small>';
+                    }
+                    messageCell.innerHTML = messageHtml;
+                    row.appendChild(messageCell);
+
+                    // View button
+                    const viewCell = document.createElement('td');
+                    viewCell.style.textAlign = 'center';
+                    const viewBtn = document.createElement('button');
+                    viewBtn.type = 'button';
+                    viewBtn.className = 'btn btn-sm btn-outline-primary';
+                    viewBtn.title = 'View full log details';
+                    viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
+                    viewBtn.onclick = function() { showLogDetails(log); };
+                    viewCell.appendChild(viewBtn);
+                    row.appendChild(viewCell);
+
+                    tableBody.appendChild(row);
+                });
+
+                tableContainer.style.display = 'block';
+
+                // Render pagination
+                if (data.totalPages > 1) {
+                    renderPagination(data.page, data.totalPages);
+                    pagination.style.display = 'block';
+                }
+
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorMessageEl.textContent = err.message || 'Failed to load collection logs';
+                console.error('Error loading collection logs:', err);
+            }
+        }
+
+        function renderPagination(currentPage, totalPages) {
+            const ul = pagination.querySelector('ul');
+            ul.innerHTML = '';
+
+            // Previous button
+            const prevLi = document.createElement('li');
+            prevLi.className = 'page-item' + (currentPage === 1 ? ' disabled' : '');
+            prevLi.innerHTML = '<a class="page-link" href="#" onclick="goToLogsPage(' + (currentPage - 1) + '); return false;">&laquo;</a>';
+            ul.appendChild(prevLi);
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage + 1 < maxVisible) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                ul.appendChild(createPageItem(1, currentPage));
+                if (startPage > 2) {
+                    const ellipsis = document.createElement('li');
+                    ellipsis.className = 'page-item disabled';
+                    ellipsis.innerHTML = '<span class="page-link">...</span>';
+                    ul.appendChild(ellipsis);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                ul.appendChild(createPageItem(i, currentPage));
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const ellipsis = document.createElement('li');
+                    ellipsis.className = 'page-item disabled';
+                    ellipsis.innerHTML = '<span class="page-link">...</span>';
+                    ul.appendChild(ellipsis);
+                }
+                ul.appendChild(createPageItem(totalPages, currentPage));
+            }
+
+            // Next button
+            const nextLi = document.createElement('li');
+            nextLi.className = 'page-item' + (currentPage === totalPages ? ' disabled' : '');
+            nextLi.innerHTML = '<a class="page-link" href="#" onclick="goToLogsPage(' + (currentPage + 1) + '); return false;">&raquo;</a>';
+            ul.appendChild(nextLi);
+        }
+
+        function createPageItem(page, currentPage) {
+            const li = document.createElement('li');
+            li.className = 'page-item' + (page === currentPage ? ' active' : '');
+            li.innerHTML = '<a class="page-link" href="#" onclick="goToLogsPage(' + page + '); return false;">' + page + '</a>';
+            return li;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Show log details modal
+        window.showLogDetails = function(log) {
+            const detailModal = document.getElementById('logDetailModal');
+            const timestamp = new Date(log.timestamp);
+
+            // Populate modal fields
+            document.getElementById('detailEventId').textContent = log.eventId;
+            document.getElementById('detailTimestamp').textContent = timestamp.toLocaleString();
+            document.getElementById('detailSeverity').innerHTML = '<span class="badge ' + log.severityBadgeClass + '">' + escapeHtml(log.severity) + '</span>';
+            document.getElementById('detailSource').textContent = log.source || 'N/A';
+            document.getElementById('detailMessage').textContent = log.message || 'N/A';
+            document.getElementById('detailPath').textContent = log.path || 'N/A';
+            document.getElementById('detailErrorCode').textContent = log.errorCode || 'N/A';
+            document.getElementById('detailContext').textContent = log.context || 'N/A';
+            document.getElementById('detailExceptionType').textContent = log.exceptionType || 'N/A';
+            document.getElementById('detailExceptionMessage').textContent = log.exceptionMessage || 'N/A';
+
+            // Show/hide AD-specific fields based on whether they have data
+            const hasAdFields = log.context || log.exceptionType || log.exceptionMessage;
+            document.getElementById('adFieldsSection').style.display = hasAdFields ? 'block' : 'none';
+
+            // Show the modal
+            const bsModal = new bootstrap.Modal(detailModal);
+            bsModal.show();
+        };
+    })();
+</script>

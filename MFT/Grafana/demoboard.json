@@ -1,0 +1,834 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 21014,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "description": "This panel displays the basic information from the file scan",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ServerName"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 268
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "BatchId"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 328
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Volumes"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 103
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 7,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "dataset": "FileSizes",
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 'ServerName'     AS MetricName, b.ServerName     AS MetricValue FROM [FileSizes].dbo.ScanBatch b WHERE b.BatchId IN (${batchid:singlequote})\r\nUNION ALL\r\nSELECT 'CollectedAtUtc' AS MetricName, CONVERT(VARCHAR, b.CollectedAtUtc, 120) FROM [FileSizes].dbo.ScanBatch b WHERE b.BatchId IN (${batchid:singlequote})\r\nUNION ALL\r\nSELECT 'ToolName'       AS MetricName, b.ToolName       FROM [FileSizes].dbo.ScanBatch b WHERE b.BatchId IN (${batchid:singlequote})\r\nUNION ALL\r\nSELECT 'CollectedBy'    AS MetricName, b.CollectedBy    FROM [FileSizes].dbo.ScanBatch b WHERE b.BatchId IN (${batchid:singlequote})\r\nUNION ALL\r\nSELECT 'Volumes'        AS MetricName, CAST(COUNT(v.ScanVolumeId) AS VARCHAR) FROM [FileSizes].dbo.ScanBatch b\r\nLEFT JOIN [FileSizes].dbo.ScanVolume v ON v.BatchId = b.BatchId\r\nWHERE b.BatchId IN (${batchid:singlequote})\r\nGROUP BY b.BatchId\r\nUNION ALL\r\nSELECT 'TotalEntries'   AS MetricName, CAST(SUM(v.EntryCount) AS VARCHAR) FROM [FileSizes].dbo.ScanBatch b\r\nLEFT JOIN [FileSizes].dbo.ScanVolume v ON v.BatchId = b.BatchId\r\nWHERE b.BatchId IN (${batchid:singlequote})\r\nGROUP BY b.BatchId;\r\n",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": " Batch Info",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TotalGB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 132
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FreeGB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PctUsed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 109
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FileCount"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 108
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DirectoryCount"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 147
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VolumeLabel"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 290
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "VolumeName"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 256
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 17,
+        "x": 7,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "dataset": "FileSizes",
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH LatestBatch AS (\r\n    SELECT ServerName, MAX(CollectedAtUtc) AS LatestScan\r\n    FROM FileSizes.dbo.ScanBatch\r\n    GROUP BY ServerName\r\n)\r\nSELECT\r\n    v.VolumeName,\r\n    v.VolumeLabel,\r\n    v.TotalSizeBytes / 1073741824.0   AS TotalGB,\r\n    v.FreeSizeBytes  / 1073741824.0   AS FreeGB,\r\n    CASE WHEN v.TotalSizeBytes > 0\r\n         THEN 100.0 * (v.TotalSizeBytes - v.FreeSizeBytes) / v.TotalSizeBytes\r\n         ELSE NULL\r\n    END AS PctUsed,\r\n    v.FileCount,\r\n    v.DirectoryCount,\r\n    v.ErrorCount\r\nFROM LatestBatch lb\r\nJOIN FileSizes.dbo.ScanBatch b ON b.ServerName = lb.ServerName\r\n                    AND b.CollectedAtUtc = lb.LatestScan\r\nJOIN FileSizes.dbo.ScanVolume v ON v.BatchId = b.BatchId\r\nwhere b.BatchId in (${batchid:singlequote})\r\nORDER BY b.ServerName, v.VolumeName;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Volume capacity summary ",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "dataset": "FileSizes",
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\r\nSELECT\r\n    CASE\r\n        WHEN CHARINDEX('.', REVERSE(f.FileName)) > 0\r\n        THEN LOWER(RIGHT(f.FileName, CHARINDEX('.', REVERSE(f.FileName)) - 1))\r\n        ELSE '(no ext)'\r\n    END AS Extension,\r\n    COUNT(*)                            AS FileCount,\r\n    SUM(f.FileSize) / 1073741824.0      AS TotalGB,\r\n    AVG(f.FileSize) / 1048576.0         AS AvgSizeMB,\r\n    MAX(f.FileSize) / 1073741824.0      AS LargestGB\r\nFROM [FileSizes].dbo.FileEntry f\r\nWHERE f.BatchId IN (${batchid:singlequote})\r\n  AND f.IsDirectory = 0\r\n  AND f.FileSize IS NOT NULL\r\nGROUP BY\r\n    CASE\r\n        WHEN CHARINDEX('.', REVERSE(f.FileName)) > 0\r\n        THEN LOWER(RIGHT(f.FileName, CHARINDEX('.', REVERSE(f.FileName)) - 1))\r\n        ELSE '(no ext)'\r\n    END\r\nORDER BY TotalGB DESC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "File type distribution (by extension)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FileName"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 322
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "dataset": "FileSizes",
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "DECLARE @BatchId5 UNIQUEIDENTIFIER = '0416EF82-58FB-422E-ABA5-FC31FB81401B';  -- replace\r\nDECLARE @DupMinSizeMB BIGINT = 10;\r\n\r\nSELECT\r\n    f.FileName,\r\n    f.FileSize / 1048576.0 AS SizeMB,\r\n    COUNT(*)               AS CopyCount,\r\n    COUNT(*) * f.FileSize / 1073741824.0 AS WastedGB\r\nFROM [FileSizes].dbo.FileEntry f\r\nWHERE f.BatchId IN (${batchid:singlequote})\r\n  AND f.IsDirectory = 0\r\n  AND f.FileSize >= @DupMinSizeMB * 1048576\r\nGROUP BY f.FileName, f.FileSize\r\nHAVING COUNT(*) > 1\r\nORDER BY WastedGB DESC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Duplicate file candidates (same name + size, different paths)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FullPath"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 978
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SizeGB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 118
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "dataset": "FileSizes",
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP 50\r\n    f.Volume,\r\n    f.FullPath,\r\n    f.FileSize / 1073741824.0 AS SizeGB,\r\n    f.ModifiedTime,\r\n    f.AccessedTime\r\nFROM FileSizes.dbo.FileEntry f\r\nJOIN FileSizes.dbo.ScanBatch b ON b.BatchId = f.BatchId\r\nWHERE b.[BatchId] in (${batchid:singlequote})\r\n  AND f.IsDirectory = 0\r\nORDER BY f.FileSize DESC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Top 50 largest files ",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "${winventory}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Volume"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FullPath"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 974
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SizeMB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 122
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AccessedTime"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 183
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ModifiedTime"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 169
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "id": 4,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "dataset": "FileSizes",
+          "datasource": {
+            "type": "mssql",
+            "uid": "${winventory}"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "DECLARE @BatchId3 UNIQUEIDENTIFIER = (${batchid:singlequote});  -- replace\r\nDECLARE @StaleDate DATETIME2(0) = DATEADD(YEAR, -2, SYSUTCDATETIME());\r\nDECLARE @MinSizeMB BIGINT = 100;\r\n\r\nSELECT\r\n    f.Volume,\r\n    f.FullPath,\r\n    f.FileSize / 1048576.0     AS SizeMB,\r\n    f.ModifiedTime,\r\n    f.AccessedTime,\r\n    DATEDIFF(DAY, f.ModifiedTime, SYSUTCDATETIME()) AS DaysSinceModified\r\nFROM [FileSizes].dbo.FileEntry f\r\nWHERE f.BatchId = @BatchId3\r\n  AND f.IsDirectory = 0\r\n  AND f.FileSize >= @MinSizeMB * 1048576\r\n  AND f.ModifiedTime < @StaleDate\r\nORDER BY f.FileSize DESC;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Stale files: not modified in over 2 years, larger than 100 MB",
+      "type": "table"
+    }
+  ],
+  "preload": false,
+  "schemaVersion": 41,
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allowCustomValue": true,
+        "current": {
+          "text": "MSSQL - Windows Infrastructure",
+          "value": "af0cf392rs5xcc"
+        },
+        "hide": 2,
+        "name": "winventory",
+        "options": [],
+        "query": "mssql",
+        "refresh": 1,
+        "regex": "/^MSSQL - Windows Infrastructure/",
+        "type": "datasource"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "text": [
+            "0416EF82-58FB-422E-ABA5-FC31FB81401B"
+          ],
+          "value": [
+            "0416EF82-58FB-422E-ABA5-FC31FB81401B"
+          ]
+        },
+        "datasource": {
+          "type": "mssql",
+          "uid": "${winventory}"
+        },
+        "definition": "SELECT BatchId\nFROM FileSizes.dbo.ScanBatch",
+        "description": "",
+        "label": "Batch ID",
+        "multi": true,
+        "name": "batchid",
+        "options": [],
+        "query": "SELECT BatchId\nFROM FileSizes.dbo.ScanBatch",
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "FileStatReport",
+  "uid": "2615e220-812c-47da-8d56-04a7bbce2f2d",
+  "version": 17
+}

@@ -1,0 +1,100 @@
+CREATE TABLE InheritanceFlags (
+    FlagValue INTEGER PRIMARY KEY,
+    Description TEXT NOT NULL,
+    IsObjectInherit BOOLEAN NOT NULL,
+    IsContainerInherit BOOLEAN NOT NULL,
+    IsNoPropagate BOOLEAN NOT NULL,
+    IsInheritOnly BOOLEAN NOT NULL,
+    IsInherited BOOLEAN NOT NULL
+)
+
+FlagValue	Description	IsObjectInherit	IsContainerInherit	IsNoPropagate	IsInheritOnly	IsInherited
+0	No inheritance	0	0	0	0	0
+1	Inherit to files only	1	0	0	0	0
+2	Inherit to folders only	0	1	0	0	0
+3	Inherit to both files and folders	1	1	0	0	0
+4	No propagate inherit	0	0	1	0	0
+8	Inherit only	0	0	0	1	0
+11	Inherit to files only, no propagate	1	0	1	0	0
+12	Inherit to folders only, no propagate	0	1	1	0	0
+15	Inherit to both, no propagate	1	1	1	0	0
+16	Inherited from parent	0	0	0	0	1
+17	Inherit to files only, inherited	1	0	0	0	1
+18	Inherit to folders only, inherited	0	1	0	0	1
+19	Inherit to both, inherited	1	1	0	0	1
+
+
+
+
+CREATE TABLE PropagationFlags (
+    FlagValue INTEGER PRIMARY KEY,
+    Description TEXT NOT NULL,
+    IsNoPropagate BOOLEAN NOT NULL,
+    IsInheritOnly BOOLEAN NOT NULL
+)
+
+
+FlagValue	Description	IsNoPropagate	IsInheritOnly
+0	None	0	0
+1	No propagate inherit	1	0
+2	Inherit only	0	1
+3	No propagate inherit + Inherit only	1	1
+
+
+
+
+CREATE TABLE ShareAvailabilityTypes (
+    TypeValue TEXT PRIMARY KEY,
+    Description TEXT NOT NULL
+)
+
+
+
+NonClustered	Standard non-clustered share
+Clustered	Clustered share for failover clustering
+ScaleOut	Scale-out file server share
+CSV	Cluster Shared Volume share
+DFS	Distributed File System share
+
+
+
+
+CREATE TABLE ShareCachingModes (
+    ModeValue TEXT PRIMARY KEY,
+    Description TEXT NOT NULL
+)
+
+ModeValue	Description
+Manual	Manual caching
+Documents	Document caching
+Programs	Program caching
+None	No caching
+
+
+
+CREATE TABLE ShareFolderEnumerationModes (
+    ModeValue TEXT PRIMARY KEY,
+    Description TEXT NOT NULL
+)
+
+ModeValue	Description
+AccessBased	Only show folders the user has access to
+Unrestricted	Show all folders regardless of access
+
+
+CREATE TABLE ShareLeasingModes (
+    ModeValue TEXT PRIMARY KEY,
+    Description TEXT NOT NULL
+)
+
+None	No leasing
+Basic	Basic leasing
+Advanced	Advanced leasing
+
+
+
+
+
+
+
+

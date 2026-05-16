@@ -1,0 +1,1183 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 11559,
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [
+        "WSUS Dashboard"
+      ],
+      "targetBlank": true,
+      "title": "Supporting Boards",
+      "tooltip": "",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale",
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 7,
+        "x": 0,
+        "y": 0
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 25,
+          "valueSize": 35
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  MAX(CASE WHEN Stat = 'TotalComputers' THEN Value END) AS [Total],\r\n  MAX(CASE WHEN Stat = 'ComputersNeedingUpdates' THEN Value END) AS [Needing Updates]\r\nFROM [SUSDB_Reports].[dbo].[tb_MissingPatchCounts];",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "System Counts",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "locale",
+          "unitScale": true
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 13,
+        "x": 7,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 25,
+          "valueSize": 35
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\r\n  MAX(CASE WHEN Stat = 'Critical' THEN Value END) AS Critical,\r\n  MAX(CASE WHEN Stat = 'Important' THEN Value END) AS Important,\r\n  MAX(CASE WHEN Stat = 'Moderate' THEN Value END) AS Moderate,\r\n  MAX(CASE WHEN Stat = 'Low' THEN Value END) AS Low,\r\n  MAX(CASE WHEN Stat = 'Unspecified' THEN Value END) AS Unspecified\r\nFROM [SUSDB_Reports].[dbo].[tb_MissingPatchCounts];",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Required Patches",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "description": "# Patch Severity Ratings\n\nThis document provides definitions for the severity ratings of software updates.\n\n## Severity Levels\n\n- **Critical**\n  - The update fixes a vulnerability whose exploitation could allow for the propagation of an Internet worm without user action.\n\n- **Important**\n  - The update fixes a vulnerability whose exploitation could result in the compromise of the confidentiality, integrity, or availability of users' data, or of the integrity or availability of processing resources.\n\n- **Low**\n  - The update fixes a vulnerability whose exploitation is extremely difficult, or whose impact is minimal.\n\n- **Moderate**\n  - The update fixes a vulnerability whose exploitation is mitigated to a significant degree by factors such as default configuration, auditing, or difficulty of exploitation.\n\n- **Unspecified**\n  - The update does not have a severity rating.\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale",
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unspecified"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "System Count"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 0,
+        "y": 4
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.0.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "DECLARE @MsrcSeverity nvarchar(15);\r\nSET @MsrcSeverity = 'Critical';\r\n\r\nDECLARE @SQL nvarchar(MAX);\r\nSET @SQL = '\r\nSELECT \r\n    [DATE],\r\n    [MsrcSeverity],\r\n    COUNT(*) AS ' + QUOTENAME(@MsrcSeverity) + '\r\nFROM \r\n    [SUSDB_Reports].[dbo].[tb_UpdatesNeededByComputerHistory]\r\nWHERE \r\n    [MsrcSeverity] = @MsrcSeverity \r\nGROUP BY \r\n    [DATE],\r\n    [MsrcSeverity]\r\nORDER BY \r\n    [DATE], \r\n    [MsrcSeverity];\r\n';\r\n\r\nDECLARE @RunScript as bit;\r\n\r\nSELECT @RunScript = \r\n  CASE\r\n    WHEN @MsrcSeverity IN ($frmMsrcSeverity)\r\n    or 'All' IN ($frmMsrcSeverity) THEN 1\r\n    ELSE 0\r\n  END\r\n\r\nIF @RunScript = 1\r\nBEGIN\r\n    EXEC sp_executesql @SQL, N'@MsrcSeverity nvarchar(15)', @MsrcSeverity = @MsrcSeverity;\r\nEND\r\n",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "DECLARE @MsrcSeverity nvarchar(15);\r\nSET @MsrcSeverity = 'Important';\r\n\r\nDECLARE @SQL nvarchar(MAX);\r\nSET @SQL = '\r\nSELECT \r\n    [DATE],\r\n    [MsrcSeverity],\r\n    COUNT(*) AS ' + QUOTENAME(@MsrcSeverity) + '\r\nFROM \r\n    [SUSDB_Reports].[dbo].[tb_UpdatesNeededByComputerHistory]\r\nWHERE \r\n    [MsrcSeverity] = @MsrcSeverity \r\nGROUP BY \r\n    [DATE],\r\n    [MsrcSeverity]\r\nORDER BY \r\n    [DATE], \r\n    [MsrcSeverity];\r\n';\r\n\r\nDECLARE @RunScript as bit;\r\n\r\nSELECT @RunScript = \r\n  CASE\r\n    WHEN @MsrcSeverity IN ($frmMsrcSeverity)\r\n    or 'All' IN ($frmMsrcSeverity) THEN 1\r\n    ELSE 0\r\n  END\r\n\r\nIF @RunScript = 1\r\nBEGIN\r\n    EXEC sp_executesql @SQL, N'@MsrcSeverity nvarchar(15)', @MsrcSeverity = @MsrcSeverity;\r\nEND\r\n",
+          "refId": "B",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "DECLARE @MsrcSeverity nvarchar(15);\r\nSET @MsrcSeverity = 'Low';\r\n\r\nDECLARE @SQL nvarchar(MAX);\r\nSET @SQL = '\r\nSELECT \r\n    [DATE],\r\n    [MsrcSeverity],\r\n    COUNT(*) AS ' + QUOTENAME(@MsrcSeverity) + '\r\nFROM \r\n    [SUSDB_Reports].[dbo].[tb_UpdatesNeededByComputerHistory]\r\nWHERE \r\n    [MsrcSeverity] = @MsrcSeverity \r\nGROUP BY \r\n    [DATE],\r\n    [MsrcSeverity]\r\nORDER BY \r\n    [DATE], \r\n    [MsrcSeverity];\r\n';\r\n\r\nDECLARE @RunScript as bit;\r\n\r\nSELECT @RunScript = \r\n  CASE\r\n    WHEN @MsrcSeverity IN ($frmMsrcSeverity)\r\n    or 'All' IN ($frmMsrcSeverity) THEN 1\r\n    ELSE 0\r\n  END\r\n\r\nIF @RunScript = 1\r\nBEGIN\r\n    EXEC sp_executesql @SQL, N'@MsrcSeverity nvarchar(15)', @MsrcSeverity = @MsrcSeverity;\r\nEND\r\n",
+          "refId": "C",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "DECLARE @MsrcSeverity nvarchar(15);\r\nSET @MsrcSeverity = 'Moderate';\r\n\r\nDECLARE @SQL nvarchar(MAX);\r\nSET @SQL = '\r\nSELECT \r\n    [DATE],\r\n    [MsrcSeverity],\r\n    COUNT(*) AS ' + QUOTENAME(@MsrcSeverity) + '\r\nFROM \r\n    [SUSDB_Reports].[dbo].[tb_UpdatesNeededByComputerHistory]\r\nWHERE \r\n    [MsrcSeverity] = @MsrcSeverity \r\nGROUP BY \r\n    [DATE],\r\n    [MsrcSeverity]\r\nORDER BY \r\n    [DATE], \r\n    [MsrcSeverity];\r\n';\r\n\r\nDECLARE @RunScript as bit;\r\n\r\nSELECT @RunScript = \r\n  CASE\r\n    WHEN @MsrcSeverity IN ($frmMsrcSeverity)\r\n    or 'All' IN ($frmMsrcSeverity) THEN 1\r\n    ELSE 0\r\n  END\r\n\r\nIF @RunScript = 1\r\nBEGIN\r\n    EXEC sp_executesql @SQL, N'@MsrcSeverity nvarchar(15)', @MsrcSeverity = @MsrcSeverity;\r\nEND\r\n",
+          "refId": "D",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "DECLARE @MsrcSeverity nvarchar(15);\r\nSET @MsrcSeverity = 'Unspecified';\r\n\r\nDECLARE @SQL nvarchar(MAX);\r\nSET @SQL = '\r\nSELECT \r\n    [DATE],\r\n    [MsrcSeverity],\r\n    COUNT(*) AS ' + QUOTENAME(@MsrcSeverity) + '\r\nFROM \r\n    [SUSDB_Reports].[dbo].[tb_UpdatesNeededByComputerHistory]\r\nWHERE \r\n    [MsrcSeverity] = @MsrcSeverity \r\nGROUP BY \r\n    [DATE],\r\n    [MsrcSeverity]\r\nORDER BY \r\n    [DATE], \r\n    [MsrcSeverity];\r\n';\r\n\r\nDECLARE @RunScript as bit;\r\n\r\nSELECT @RunScript = \r\n  CASE\r\n    WHEN @MsrcSeverity IN ($frmMsrcSeverity)\r\n    or 'All' IN ($frmMsrcSeverity) THEN 1\r\n    ELSE 0\r\n  END\r\n\r\nIF @RunScript = 1\r\nBEGIN\r\n    EXEC sp_executesql @SQL, N'@MsrcSeverity nvarchar(15)', @MsrcSeverity = @MsrcSeverity;\r\nEND\r\n",
+          "refId": "E",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        },
+        {
+          "dataset": "SUSDB",
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "hide": false,
+          "rawQuery": true,
+          "rawSql": "SELECT \r\n    [DATE],\r\n    COUNT(DISTINCT [ComputerId]) AS [System Count]\r\nFROM \r\n    [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE\r\n    ('$frmShowComputerCount' = 'true' OR 1=0)\r\nGROUP BY \r\n    [DATE]\r\nORDER BY \r\n    [DATE];\r\n",
+          "refId": "F",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Needed Patches by Patch Severity Ratings ",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerId"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FQDN"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 267
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Needed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 66
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Target Group"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 124
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OSVersionDetails"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 171
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ProcessorArchitecture"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 202
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Client Version"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 154
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OSVersion"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 125
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 14,
+        "y": 4
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP (50) [ComputerId]\r\n\t,[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer] )\r\nORDER BY [Needed] DESC",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Top 50 Systems Requiring Updates",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "locale",
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Critical"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 135
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unspecified"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 135
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerDomain"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Important"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 134
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Moderate"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 134
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Low"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 135
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Systems"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 135
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 14,
+        "x": 0,
+        "y": 12
+      },
+      "id": 6,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT [Domain]\r\n      ,[Systems]\r\n      ,[Critical]\r\n      ,[Important]\r\n      ,[Moderate]\r\n      ,[Low]\r\n      ,[Unspecified]\r\n  FROM [SUSDB_Reports].[dbo].[tb_UpdateSummaryByDomain]\r\nORDER BY Domain;\r\n",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Updates Required by Domain",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mssql",
+        "uid": "xLTWsaF7k"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unitScale": true
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ComputerId"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FQDN"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 267
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "",
+                    "url": "https://grafanaprod.ssnc-corp.cloud/grafana/d/a5f3f14d-66aa-4641-bb13-c5dc9a4259d2/wsus-computer-report?orgId=1&var-SearchTerm=${__data.fields[ComputerId]}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Needed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 66
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Target Group"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 124
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OSVersionDetails"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 171
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ProcessorArchitecture"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 202
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Client Version"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 154
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OSVersion"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 125
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 14,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "10.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mssql",
+            "uid": "xLTWsaF7k"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT TOP (50) [ComputerId]\r\n\t,[FullDomainName] AS [FQDN]\r\n\t,[TargetGroupName] AS [Target Group]\r\n\t,[Needed]\r\n\t,[Failed]\r\n\t,CAST([OSMajorVersion] AS NVARCHAR(10)) + '.' + CAST([OSMinorVersion] AS NVARCHAR(10)) + '.' + CAST([OSBuildNumber] AS NVARCHAR(10)) + \r\n\tCASE \r\n\t\tWHEN [OSServicePackMajorNumber] > 0\r\n\t\t\tTHEN ' SP' + CAST([OSServicePackMajorNumber] AS NVARCHAR(10))\r\n\t\tELSE ''\r\n\tEND AS [OS Version]\r\nFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer]\r\nWHERE [Date] = ( SELECT MAX([Date])\r\n\t\tFROM [SUSDB_Reports].[dbo].[tb_DailySummariesPerComputer] )\r\nORDER BY [Failed] DESC",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Top 50 Systems with Failed Updates",
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": [
+    "WSUS Dashboard"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "Critical"
+          ],
+          "value": [
+            "Critical"
+          ]
+        },
+        "datasource": {
+          "type": "mssql",
+          "uid": "xLTWsaF7k"
+        },
+        "definition": "select distinct [MsrcSeverity]\nFROM [SUSDB].[PUBLIC_VIEWS].[vUpdate]",
+        "description": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "MSRC Severity",
+        "multi": true,
+        "name": "frmMsrcSeverity",
+        "options": [],
+        "query": "select distinct [MsrcSeverity]\nFROM [SUSDB].[PUBLIC_VIEWS].[vUpdate]",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "False",
+          "value": "False"
+        },
+        "description": "Display the count of computers on the graph",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Computer Count",
+        "multi": false,
+        "name": "frmShowComputerCount",
+        "options": [
+          {
+            "selected": true,
+            "text": "False",
+            "value": "False"
+          },
+          {
+            "selected": false,
+            "text": "True",
+            "value": "True"
+          }
+        ],
+        "query": "False, True",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Windows Update Overview",
+  "uid": "d3ce3b5a-9ca7-4c2e-8b22-d9349d28eec9",
+  "version": 55,
+  "weekStart": "sunday"
+}

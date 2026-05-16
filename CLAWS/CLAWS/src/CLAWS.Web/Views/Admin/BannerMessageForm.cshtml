@@ -1,0 +1,186 @@
+@model CLAWS.Web.Models.BannerMessageFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Edit Banner Message" : "Create Banner Message";
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-megaphone"></i> @ViewData["Title"]
+</h1>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pencil-square"></i> Message Details
+            </div>
+            <div class="card-body">
+                <form asp-action="SaveBannerMessage" method="post">
+                    @if (Model.IsEdit)
+                    {
+                        <input type="hidden" asp-for="BannerMessageId" />
+                    }
+
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" asp-for="Title" required maxlength="200"
+                               placeholder="e.g., Scheduled Maintenance">
+                        <div class="form-text">A short title for the banner message (max 200 characters).</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Message" class="form-label">Message <span class="text-danger">*</span></label>
+                        <textarea class="form-control" asp-for="Message" rows="3" required maxlength="2000"
+                                  placeholder="e.g., The system will be undergoing maintenance on Saturday from 2:00 AM to 6:00 AM EST."></textarea>
+                        <div class="form-text">The full message to display (max 2000 characters).</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="MessageType" class="form-label">Message Type <span class="text-danger">*</span></label>
+                                <select class="form-select" asp-for="MessageType" id="messageType">
+                                    <option value="Info">Info (Blue)</option>
+                                    <option value="Warning">Warning (Yellow)</option>
+                                    <option value="Error">Error (Red)</option>
+                                </select>
+                                <div class="form-text">Determines the color and style of the banner.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="DisplayOrder" class="form-label">Display Order</label>
+                                <input type="number" class="form-control" asp-for="DisplayOrder" min="0" max="999">
+                                <div class="form-text">Lower numbers display first (default: 0).</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="StartDate" class="form-label">Start Date (Optional)</label>
+                                <input type="datetime-local" class="form-control" asp-for="StartDate">
+                                <div class="form-text">When to start showing this banner.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="EndDate" class="form-label">End Date (Optional)</label>
+                                <input type="datetime-local" class="form-control" asp-for="EndDate">
+                                <div class="form-text">When to stop showing this banner.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" asp-for="IsEnabled" id="isEnabled">
+                            <label class="form-check-label" for="isEnabled">
+                                <strong>Enable this banner message</strong>
+                            </label>
+                        </div>
+                        <div class="form-text">When enabled, the banner will be displayed to users (subject to schedule).</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> @(Model.IsEdit ? "Update" : "Create") Banner Message
+                        </button>
+                        <a asp-action="BannerMessages" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-eye"></i> Preview
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">This is how the banner will appear:</p>
+                <div id="previewBanner">
+                    <div id="previewInfo" class="alert alert-info mb-0" style="display: none;">
+                        <i class="bi bi-info-circle"></i>
+                        <strong id="previewTitleInfo">Title</strong>: <span id="previewMessageInfo">Message</span>
+                    </div>
+                    <div id="previewWarning" class="mb-0" style="display: none; background-color: #fff3cd; border: 1px solid #ffc107; padding: 0.5rem 1rem; border-radius: 0.25rem;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong id="previewTitleWarning">Title</strong>: <span id="previewMessageWarning">Message</span>
+                    </div>
+                    <div id="previewError" class="mb-0" style="display: none; background-color: #f8d7da; border: 1px solid #dc3545; padding: 0.5rem 1rem; border-radius: 0.25rem;">
+                        <i class="bi bi-x-circle"></i>
+                        <strong id="previewTitleError">Title</strong>: <span id="previewMessageError">Message</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Message Types
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <span class="badge bg-info"><i class="bi bi-info-circle"></i> Info</span>
+                    <small class="text-muted">General information, announcements</small>
+                </div>
+                <div class="mb-2">
+                    <span class="badge bg-warning"><i class="bi bi-exclamation-triangle"></i> Warning</span>
+                    <small class="text-muted">Important notices, planned maintenance</small>
+                </div>
+                <div>
+                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Error</span>
+                    <small class="text-muted">Critical issues, service disruptions</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const titleInput = document.getElementById('Title');
+            const messageInput = document.getElementById('Message');
+            const typeSelect = document.getElementById('messageType');
+
+            function updatePreview() {
+                const title = titleInput.value || 'Title';
+                const message = messageInput.value || 'Message';
+                const type = typeSelect.value;
+
+                // Hide all previews
+                document.getElementById('previewInfo').style.display = 'none';
+                document.getElementById('previewWarning').style.display = 'none';
+                document.getElementById('previewError').style.display = 'none';
+
+                // Show the selected type
+                const previewId = 'preview' + type;
+                const preview = document.getElementById(previewId);
+                if (preview) {
+                    preview.style.display = 'block';
+                    document.getElementById('previewTitle' + type).textContent = title;
+                    document.getElementById('previewMessage' + type).textContent = message;
+                }
+            }
+
+            titleInput.addEventListener('input', updatePreview);
+            messageInput.addEventListener('input', updatePreview);
+            typeSelect.addEventListener('change', updatePreview);
+
+            // Initial preview
+            updatePreview();
+        });
+    </script>
+}

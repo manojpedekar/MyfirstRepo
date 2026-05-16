@@ -1,0 +1,96 @@
+{
+  "title": "CLAWS Help",
+  "description": "Documentation for NTFS Permissions and AD Inventory collection tools",
+  "contentOwner": "Global Windows Servers Team",
+  "contactEmail": "GlobalWindowsServers@sscinc.com",
+  "sections": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "icon": "bi-rocket-takeoff",
+      "description": "New to the tools? Start here.",
+      "articles": [
+        { "id": "index", "title": "Overview", "file": "getting-started/index.md" },
+        { "id": "quick-start", "title": "Quick Start Guide", "file": "getting-started/quick-start.md" },
+        { "id": "requirements", "title": "System Requirements", "file": "getting-started/requirements.md" }
+      ]
+    },
+    {
+      "id": "access",
+      "title": "Access & Roles",
+      "icon": "bi-shield-lock",
+      "description": "Understand roles and request access",
+      "articles": [
+        { "id": "index", "title": "Overview", "file": "access/index.md" },
+        { "id": "roles", "title": "Roles Reference", "file": "access/roles.md" },
+        { "id": "requesting-access", "title": "Requesting Access", "file": "access/requesting-access.md" },
+        { "id": "api-keys", "title": "API Keys", "file": "access/api-keys.md" },
+        { "id": "service-accounts", "title": "Service Accounts", "file": "access/service-accounts.md" }
+      ]
+    },
+    {
+      "id": "ntfs-collector",
+      "title": "NTFS Collector",
+      "icon": "bi-folder-check",
+      "description": "Collect NTFS file system permissions",
+      "articles": [
+        { "id": "index", "title": "Overview", "file": "ntfs-collector/index.md" },
+        { "id": "installation", "title": "Installation", "file": "ntfs-collector/installation.md" },
+        { "id": "usage", "title": "Usage Guide", "file": "ntfs-collector/usage.md" },
+        { "id": "parameters", "title": "Parameters Reference", "file": "ntfs-collector/parameters.md" },
+        { "id": "examples", "title": "Examples", "file": "ntfs-collector/examples.md" },
+        { "id": "testntfspath", "title": "TestNTFSPath Utility", "file": "ntfs-collector/testntfspath.md" }
+      ]
+    },
+    {
+      "id": "ad-inventory",
+      "title": "AD Inventory",
+      "icon": "bi-diagram-3",
+      "description": "Collect Active Directory inventory data",
+      "articles": [
+        { "id": "index", "title": "Overview", "file": "ad-inventory/index.md" },
+        { "id": "installation", "title": "Installation", "file": "ad-inventory/installation.md" },
+        { "id": "permissions", "title": "Required Permissions", "file": "ad-inventory/permissions.md" },
+        { "id": "collection", "title": "Running Collections", "file": "ad-inventory/collection.md" },
+        { "id": "parameters", "title": "Parameters Reference", "file": "ad-inventory/parameters.md" },
+        { "id": "sites-services", "title": "Sites & Services", "file": "ad-inventory/sites-services.md" }
+      ]
+    },
+    {
+      "id": "uploading",
+      "title": "Uploading Data",
+      "icon": "bi-cloud-upload",
+      "description": "How to upload your collections",
+      "articles": [
+        { "id": "index", "title": "Overview", "file": "uploading/index.md" },
+        { "id": "web-upload", "title": "Web Interface", "file": "uploading/web-upload.md" },
+        { "id": "api-upload", "title": "API Upload", "file": "uploading/api-upload.md" },
+        { "id": "large-files", "title": "Large Files", "file": "uploading/large-files.md" }
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshooting",
+      "icon": "bi-wrench",
+      "description": "Common issues and solutions",
+      "articles": [
+        { "id": "index", "title": "Overview", "file": "troubleshooting/index.md" },
+        { "id": "collector-issues", "title": "Collector Issues", "file": "troubleshooting/collector-issues.md" },
+        { "id": "upload-failures", "title": "Upload Failures", "file": "troubleshooting/upload-failures.md" },
+        { "id": "validation-errors", "title": "Validation Errors", "file": "troubleshooting/validation-errors.md" }
+      ]
+    }
+  ],
+  "popularArticles": [
+    "getting-started/quick-start",
+    "access/requesting-access",
+    "ntfs-collector/installation",
+    "ad-inventory/permissions",
+    "troubleshooting/upload-failures"
+  ],
+  "footerLinks": [
+    { "title": "FAQ", "file": "faq.md" },
+    { "title": "Release Notes", "file": "release-notes.md" },
+    { "title": "Contact Support", "file": "contact.md" }
+  ]
+}

@@ -1,0 +1,207 @@
+@model DomainEditViewModel
+@* Enterprise CA Detail Modal - displays detailed information about a specific Enterprise CA *@
+
+<div class="modal fade" id="enterpriseCaModal" tabindex="-1" aria-labelledby="enterpriseCaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enterpriseCaModalLabel">
+                    <i class="bi bi-building"></i> <span id="enterpriseCaName">Enterprise CA</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading state -->
+                <div id="enterpriseCaLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading CA details...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="enterpriseCaError" class="alert alert-danger d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span id="enterpriseCaErrorMessage"></span>
+                </div>
+
+                <!-- CA Details -->
+                <div id="enterpriseCaContent" class="d-none">
+                    <!-- Header section -->
+                    <div class="d-flex align-items-center mb-3">
+                        <span id="enterpriseCaTypeIcon" class="fs-2 me-3 text-primary">
+                            <i class="bi bi-building"></i>
+                        </span>
+                        <div>
+                            <h5 class="mb-0" id="enterpriseCaDisplayName"></h5>
+                            <span id="enterpriseCaTypeBadge" class="badge bg-primary">Enterprise CA</span>
+                        </div>
+                    </div>
+
+                    <!-- Details card -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <i class="bi bi-info-circle"></i> CA Details
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted" style="width: 150px;">DNS Hostname</th>
+                                        <td id="enterpriseCaDnsHostname">—</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">CA Type</th>
+                                        <td id="enterpriseCaType">—</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Certificate DN</th>
+                                        <td id="enterpriseCaCertDn" class="text-break small">—</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Distinguished Name</th>
+                                        <td id="enterpriseCaDn" class="text-break small">—</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Created</th>
+                                        <td id="enterpriseCaCreated">—</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted">Modified</th>
+                                        <td id="enterpriseCaModified">—</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Published Templates section -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-file-earmark-text"></i> Published Templates</span>
+                            <span class="badge bg-info" id="enterpriseCaTemplateCount">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="enterpriseCaTemplatesEmpty" class="text-center text-muted py-2 d-none">
+                                <i class="bi bi-inbox"></i> No published templates
+                            </div>
+                            <div id="enterpriseCaTemplates" class="d-flex flex-wrap gap-2">
+                                <!-- Template badges will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <small class="text-muted me-auto">
+                    <i class="bi bi-info-circle"></i> Forest: @Model.PkiSummary?.ForestName
+                </small>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    window.showEnterpriseCaDetail = function(caName) {
+        const modal = new bootstrap.Modal(document.getElementById('enterpriseCaModal'));
+        modal.show();
+        loadEnterpriseCaDetail(caName);
+    };
+
+    function loadEnterpriseCaDetail(caName) {
+        const domainId = @Model.Domain.DomainID;
+
+        // Update header
+        document.getElementById('enterpriseCaName').textContent = caName;
+        document.getElementById('enterpriseCaDisplayName').textContent = caName;
+
+        // Show loading, hide content/error
+        document.getElementById('enterpriseCaLoading').classList.remove('d-none');
+        document.getElementById('enterpriseCaContent').classList.add('d-none');
+        document.getElementById('enterpriseCaError').classList.add('d-none');
+
+        fetch(`/DomainMasterList/GetEnterpriseCaDetail?domainId=${domainId}&caName=${encodeURIComponent(caName)}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('enterpriseCaLoading').classList.add('d-none');
+
+                if (!data.success) {
+                    document.getElementById('enterpriseCaError').classList.remove('d-none');
+                    document.getElementById('enterpriseCaErrorMessage').textContent = data.message;
+                    return;
+                }
+
+                const ca = data.caDetail;
+
+                // Update type icon and badge
+                const isRoot = ca.caType && ca.caType.toLowerCase().includes('root');
+                const iconEl = document.getElementById('enterpriseCaTypeIcon');
+                const badgeEl = document.getElementById('enterpriseCaTypeBadge');
+
+                if (isRoot) {
+                    iconEl.innerHTML = '<i class="bi bi-shield-fill"></i>';
+                    iconEl.className = 'fs-2 me-3 text-warning';
+                    badgeEl.className = 'badge bg-warning text-dark';
+                    badgeEl.textContent = 'Root CA';
+                } else {
+                    iconEl.innerHTML = '<i class="bi bi-building"></i>';
+                    iconEl.className = 'fs-2 me-3 text-primary';
+                    badgeEl.className = 'badge bg-primary';
+                    badgeEl.textContent = 'Enterprise Subordinate CA';
+                }
+
+                // Fill in details
+                document.getElementById('enterpriseCaDnsHostname').textContent = ca.dnsHostName || '—';
+                document.getElementById('enterpriseCaType').textContent = ca.caType || '—';
+                document.getElementById('enterpriseCaCertDn').textContent = ca.caCertificateDN || '—';
+                document.getElementById('enterpriseCaDn').textContent = ca.distinguishedName || '—';
+                document.getElementById('enterpriseCaCreated').textContent = formatDate(ca.whenCreated);
+                document.getElementById('enterpriseCaModified').textContent = formatDate(ca.whenChanged);
+
+                // Published templates
+                const templatesContainer = document.getElementById('enterpriseCaTemplates');
+                const templatesEmpty = document.getElementById('enterpriseCaTemplatesEmpty');
+                const templateCount = document.getElementById('enterpriseCaTemplateCount');
+
+                templatesContainer.innerHTML = '';
+
+                if (ca.publishedTemplates && ca.publishedTemplates.length > 0) {
+                    templateCount.textContent = ca.publishedTemplates.length;
+                    templatesEmpty.classList.add('d-none');
+
+                    ca.publishedTemplates.forEach(function(template) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-light text-dark border';
+                        badge.innerHTML = `<i class="bi bi-file-earmark-text text-info"></i> ${escapeHtml(template)}`;
+                        templatesContainer.appendChild(badge);
+                    });
+                } else {
+                    templateCount.textContent = '0';
+                    templatesEmpty.classList.remove('d-none');
+                }
+
+                document.getElementById('enterpriseCaContent').classList.remove('d-none');
+            })
+            .catch(error => {
+                document.getElementById('enterpriseCaLoading').classList.add('d-none');
+                document.getElementById('enterpriseCaError').classList.remove('d-none');
+                document.getElementById('enterpriseCaErrorMessage').textContent = 'Failed to load CA details: ' + error.message;
+            });
+    }
+})();
+</script>

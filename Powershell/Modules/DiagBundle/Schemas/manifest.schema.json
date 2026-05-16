@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/diagbundle/manifest.schema.json",
+  "title": "DiagBundle manifest",
+  "description": "Contract between DiagBundle collectors and downstream consumers (AI agent, human responder).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "host",
+    "collection",
+    "time_window",
+    "artifacts",
+    "collection_errors",
+    "redactions_applied",
+    "size_budget"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Manifest schema version. Independent of module version. Bumped only on breaking contract changes."
+    },
+    "bundle_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this bundle."
+    },
+    "host": {
+      "type": "object",
+      "required": [
+        "computer_name",
+        "fqdn",
+        "domain",
+        "os_version",
+        "os_caption",
+        "install_date",
+        "last_boot_utc"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "computer_name": { "type": "string" },
+        "fqdn":          { "type": "string" },
+        "domain":        { "type": "string" },
+        "os_version":    { "type": "string" },
+        "os_caption":    { "type": "string" },
+        "install_date":  { "type": "string", "format": "date-time" },
+        "last_boot_utc": { "type": "string", "format": "date-time" }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "required": [
+        "collector_version",
+        "started_utc",
+        "completed_utc",
+        "duration_seconds",
+        "scenario_hint",
+        "elevation",
+        "powershell_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "collector_version":  { "type": "string" },
+        "started_utc":        { "type": "string", "format": "date-time" },
+        "completed_utc":      { "type": "string", "format": "date-time" },
+        "duration_seconds":   { "type": "integer", "minimum": 0 },
+        "scenario_hint":      { "type": "string" },
+        "elevation":          { "type": "string", "enum": ["SYSTEM", "Administrator", "User"] },
+        "powershell_version": { "type": "string" },
+        "problem_description": {
+          "type": "object",
+          "description": "Optional operator-supplied problem narrative. Absent for unattended collections. Read this before forming any hypothesis from the data alone.",
+          "required": ["text", "source", "operator_name", "supplied_at_utc"],
+          "additionalProperties": false,
+          "properties": {
+            "text":               { "type": "string", "description": "Problem narrative, post-redaction. Empty when source is prompt_cancelled." },
+            "source":             { "type": "string", "enum": ["parameter", "file", "prompt", "prompt_cancelled"] },
+            "operator_name":      { "type": "string", "description": "DOMAIN\\\\user of the operator who supplied the description." },
+            "supplied_at_utc":    { "type": "string", "format": "date-time" },
+            "truncated_to_bytes": { "type": ["integer", "null"], "minimum": 0, "description": "Original UTF-8 byte size when text was truncated to the 8 KB cap; null otherwise." },
+            "original_path":      { "type": "string", "description": "Absolute path of the source file when source = file." }
+          }
+        }
+      }
+    },
+    "time_window": {
+      "type": "object",
+      "required": [
+        "events_from_utc",
+        "events_to_utc",
+        "window_hours"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "events_from_utc": { "type": "string", "format": "date-time" },
+        "events_to_utc":   { "type": "string", "format": "date-time" },
+        "window_hours":    { "type": "integer", "minimum": 1 },
+        "perf_from_utc":   { "type": "string", "format": "date-time" },
+        "perf_to_utc":     { "type": "string", "format": "date-time" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "Every file in the bundle, derived or raw, with provenance and checksum.",
+      "items": {
+        "type": "object",
+        "required": ["path", "category", "type", "size_bytes", "sha256"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path inside the ZIP, forward-slash separated."
+          },
+          "category": {
+            "type": "string",
+            "description": "Logical category, e.g. inventory, patching, events_summary, boot_timeline, eventlog_raw, perf_summary, perf_raw, services, processes, storage, network, ad_context, crashes_wer, registry, scheduled_tasks, scheduled_tasks_expected, role_iis, role_sql, role_citrix, role_dfsr, hypervisor, hypervisor_registry, hypervisor_agent_log, hypervisor_installer_log, live_kernel_report, salt, salt_config, salt_log, salt_log_index, salt_jobs_index, salt_version, salt_grains, salt_grains_static, salt_probe, cloudbase_init, cloudbase_init_config, cloudbase_init_log, cloudbase_init_localscript, cloudbase_init_userdata, baseline_diff, transcript, checksums."
+          },
+          "schema_version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$",
+            "description": "Schema version of this artifact's payload. Required for derived artifacts."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["derived", "raw"],
+            "description": "derived = produced by collector aggregation. raw = forensic preservation, untransformed."
+          },
+          "source_artifacts": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths of inputs used to produce this derived artifact."
+          },
+          "channel": {
+            "type": "string",
+            "description": "EVTX channel name, when category = eventlog_raw."
+          },
+          "events_count":    { "type": "integer", "minimum": 0 },
+          "events_from_utc": { "type": "string", "format": "date-time" },
+          "events_to_utc":   { "type": "string", "format": "date-time" },
+          "row_count":       { "type": "integer", "minimum": 0 },
+          "size_bytes":      { "type": "integer", "minimum": 0 },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "description":     { "type": "string" }
+        }
+      }
+    },
+    "collection_errors": {
+      "type": "array",
+      "description": "Per-collector errors. Allows the agent to distinguish 'missing because not applicable' from 'missing because failed'.",
+      "items": {
+        "type": "object",
+        "required": ["collector", "reason", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "artifact":  { "type": "string", "description": "Artifact path or pattern that was expected but not produced." },
+          "collector": { "type": "string" },
+          "reason":    { "type": "string" },
+          "severity":  { "type": "string", "enum": ["info", "warning", "error"] }
+        }
+      }
+    },
+    "redactions_applied": {
+      "type": "array",
+      "description": "Named redaction rules that fired during this collection.",
+      "items": { "type": "string" }
+    },
+    "size_budget": {
+      "type": "object",
+      "required": [
+        "raw_uncompressed_bytes",
+        "summary_uncompressed_bytes",
+        "zip_compressed_bytes",
+        "truncations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "raw_uncompressed_bytes":     { "type": "integer", "minimum": 0 },
+        "summary_uncompressed_bytes": { "type": "integer", "minimum": 0 },
+        "zip_compressed_bytes":       { "type": "integer", "minimum": 0 },
+        "truncations": {
+          "type": "array",
+          "description": "Records of artifacts trimmed to honor the size budget.",
+          "items": {
+            "type": "object",
+            "required": ["artifact", "reason"],
+            "properties": {
+              "artifact":           { "type": "string" },
+              "reason":             { "type": "string" },
+              "original_size_bytes":{ "type": "integer", "minimum": 0 },
+              "trimmed_size_bytes": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "description": "Baseline-aware diff metadata. Absent when no baseline is available.",
+      "required": ["available"],
+      "additionalProperties": false,
+      "properties": {
+        "available":      { "type": "boolean" },
+        "captured_utc":   { "type": "string", "format": "date-time" },
+        "diff_artifact":  { "type": "string" }
+      }
+    },
+    "timings": {
+      "type": "object",
+      "description": "Per-step wall-clock timings recorded by Invoke-DiagTimed. Absent when no timed steps were recorded (older modules or failed read of collector.log).",
+      "required": ["by_collector_seconds", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "by_collector_seconds": {
+          "type": "object",
+          "description": "Map of collector name to total timed-step seconds for that collector, ordered slowest first. Excludes wall-clock time spent in the collector outside of timed steps.",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "steps": {
+          "type": "array",
+          "description": "Every timed step recorded during the run, sorted by duration descending. The slowest operations of the bundle are at the head of this list.",
+          "items": {
+            "type": "object",
+            "required": ["collector", "step", "duration_ms", "ts"],
+            "additionalProperties": false,
+            "properties": {
+              "collector":   { "type": "string" },
+              "step":        { "type": "string" },
+              "duration_ms": { "type": "integer", "minimum": 0 },
+              "exit_code":   { "type": ["integer", "null"] },
+              "ts":          { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

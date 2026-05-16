@@ -1,0 +1,209 @@
+@model DomainEditViewModel
+@* NTAuth Certificates Modal - displays NTAuth CA certificates for smart card authentication *@
+
+<div class="modal fade" id="ntAuthCertificatesModal" tabindex="-1" aria-labelledby="ntAuthCertificatesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ntAuthCertificatesModalLabel">
+                    <i class="bi bi-key"></i> NTAuth Certificates
+                    <span class="badge bg-success ms-2" id="ntAuthCertificatesCount">0</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Expiration warning banner -->
+                <div id="ntAuthExpirationWarning" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Warning:</strong> <span id="ntAuthExpirationCount">0</span> certificate(s) expired or expiring soon.
+                    <br><small>Expiring NTAuth certificates can break smart card authentication forest-wide.</small>
+                </div>
+
+                <!-- Loading state -->
+                <div id="ntAuthCertificatesLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading NTAuth certificates...</p>
+                </div>
+
+                <!-- Error state -->
+                <div id="ntAuthCertificatesError" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span id="ntAuthCertificatesErrorMessage"></span>
+                </div>
+
+                <!-- Empty state -->
+                <div id="ntAuthCertificatesEmpty" class="text-center text-muted py-4 d-none">
+                    <i class="bi bi-key-fill fs-1 d-block mb-2"></i>
+                    <p>No NTAuth certificates found.</p>
+                    <small>Smart card authentication may not be configured.</small>
+                </div>
+
+                <!-- Info banner -->
+                <div class="alert alert-info py-2 mx-3 mt-3 mb-0 d-none" id="ntAuthInfoBanner">
+                    <i class="bi bi-info-circle"></i>
+                    <small>NTAuth certificates authorize CAs for smart card logon, domain controller certificates, and Kerberos authentication.</small>
+                </div>
+
+                <!-- Data table -->
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0 d-none" id="ntAuthCertificatesTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th class="ps-3" title="The Certificate Authority authorized to issue certificates for smart card logon, domain controller authentication, and Kerberos PKINIT">Issuing CA</th>
+                                <th style="width: 120px;" title="Unique SHA-1 hash that identifies this specific certificate">Thumbprint</th>
+                                <th style="width: 100px;" title="The date when this NTAuth certificate expires. Expired certificates break smart card authentication forest-wide.">Expires</th>
+                                <th class="text-center" style="width: 80px;" title="Days remaining until expiration. Negative values indicate the certificate has already expired.">Days</th>
+                                <th class="text-center" style="width: 90px;" title="Certificate status: Valid (>180 days), Warning (90-180 days), EXPIRING (<90 days), or EXPIRED">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ntAuthCertificatesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <small class="text-muted me-auto">
+                    <i class="bi bi-info-circle"></i> Forest: @Model.PkiSummary?.ForestName
+                </small>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let ntAuthLoaded = false;
+
+    const modal = document.getElementById('ntAuthCertificatesModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function () {
+            if (!ntAuthLoaded) {
+                loadNTAuthCertificates();
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString();
+    }
+
+    function truncateThumbprint(thumbprint) {
+        if (!thumbprint) return '—';
+        if (thumbprint.length > 12) {
+            return thumbprint.substring(0, 12) + '...';
+        }
+        return thumbprint;
+    }
+
+    window.loadNTAuthCertificates = function() {
+        const domainId = @Model.Domain.DomainID;
+
+        document.getElementById('ntAuthCertificatesLoading').classList.remove('d-none');
+        document.getElementById('ntAuthCertificatesTable').classList.add('d-none');
+        document.getElementById('ntAuthCertificatesError').classList.add('d-none');
+        document.getElementById('ntAuthCertificatesEmpty').classList.add('d-none');
+        document.getElementById('ntAuthExpirationWarning').classList.add('d-none');
+        document.getElementById('ntAuthInfoBanner').classList.add('d-none');
+
+        fetch(`/DomainMasterList/GetNTAuthCertificates?domainId=${domainId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ntAuthCertificatesLoading').classList.add('d-none');
+
+                if (!data.success) {
+                    document.getElementById('ntAuthCertificatesError').classList.remove('d-none');
+                    document.getElementById('ntAuthCertificatesErrorMessage').textContent = data.message;
+                    return;
+                }
+
+                document.getElementById('ntAuthCertificatesCount').textContent = data.totalCount;
+
+                if (data.totalCount === 0) {
+                    document.getElementById('ntAuthCertificatesEmpty').classList.remove('d-none');
+                    return;
+                }
+
+                // Show expiration warning if any certs are expiring
+                if (data.expiringCount > 0) {
+                    document.getElementById('ntAuthExpirationWarning').classList.remove('d-none');
+                    document.getElementById('ntAuthExpirationCount').textContent = data.expiringCount;
+                }
+
+                document.getElementById('ntAuthInfoBanner').classList.remove('d-none');
+
+                const tbody = document.getElementById('ntAuthCertificatesBody');
+                tbody.innerHTML = '';
+
+                data.ntAuthCerts.forEach(function(cert) {
+                    const row = document.createElement('tr');
+
+                    // Calculate days remaining and status
+                    let statusClass = 'success';
+                    let statusText = 'Valid';
+                    let daysText = '—';
+
+                    if (cert.certificateNotAfter) {
+                        const expDate = new Date(cert.certificateNotAfter);
+                        const now = new Date();
+                        const daysRemaining = Math.floor((expDate - now) / (1000 * 60 * 60 * 24));
+                        daysText = daysRemaining.toString();
+
+                        if (daysRemaining < 0) {
+                            statusClass = 'danger';
+                            statusText = 'EXPIRED';
+                            daysText = `<span class="text-danger">${daysRemaining}</span>`;
+                        } else if (daysRemaining < 90) {
+                            statusClass = 'danger';
+                            statusText = 'EXPIRING';
+                            daysText = `<span class="text-danger fw-bold">${daysRemaining}</span>`;
+                        } else if (daysRemaining < 180) {
+                            statusClass = 'warning';
+                            statusText = 'Warning';
+                            daysText = `<span class="text-warning">${daysRemaining}</span>`;
+                        }
+                    }
+
+                    row.innerHTML = `
+                        <td class="ps-3">
+                            <span class="text-truncate d-inline-block" style="max-width: 350px;" title="${escapeHtml(cert.certificateSubject || '')}">
+                                ${escapeHtml(cert.certificateSubject || 'Unknown')}
+                            </span>
+                        </td>
+                        <td>
+                            <code class="small" title="${escapeHtml(cert.certificateThumbprint || '')}">${truncateThumbprint(cert.certificateThumbprint)}</code>
+                        </td>
+                        <td>
+                            ${formatDate(cert.certificateNotAfter)}
+                        </td>
+                        <td class="text-center">
+                            ${daysText}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-${statusClass}">${statusText}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                document.getElementById('ntAuthCertificatesTable').classList.remove('d-none');
+                ntAuthLoaded = true;
+            })
+            .catch(error => {
+                document.getElementById('ntAuthCertificatesLoading').classList.add('d-none');
+                document.getElementById('ntAuthCertificatesError').classList.remove('d-none');
+                document.getElementById('ntAuthCertificatesErrorMessage').textContent = 'Failed to load NTAuth certificates: ' + error.message;
+            });
+    };
+})();
+</script>

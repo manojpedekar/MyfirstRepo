@@ -1,0 +1,721 @@
+@model NtfsPermissionsViewModel
+@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService AuthorizationService
+@{
+    ViewData["Title"] = "NTFS Permissions";
+    var activeDeletionIds = Model.ActiveDeletionIds ?? new List<string>();
+    var canDelete = (await AuthorizationService.AuthorizeAsync(User, "NtfsPermsAdminOrSiteAdmin")).Succeeded;
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-folder-symlink"></i> NTFS Permissions
+</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i> @Model.ErrorMessage
+    </div>
+}
+else
+{
+    @if (canDelete)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            <strong>Warning:</strong> This page allows you to delete data from the <strong>production</strong> database schema
+            (<code>fsapp</code>). Deleted data cannot be recovered. Use with caution.
+        </div>
+    }
+
+    @if (activeDeletionIds.Count > 0)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-hourglass-split"></i>
+            <strong>@activeDeletionIds.Count deletion job(s) in progress or queued.</strong>
+            Jobs are processed one at a time. Progress is shown inline below.
+        </div>
+    }
+
+    <!-- Summary Card -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card text-bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Collections</h5>
+                            <h2 class="mb-0">@Model.Collections.Count</h2>
+                            <small>@Model.TotalRecords.ToString("N0") total records</small>
+                        </div>
+                        <i class="bi bi-folder-symlink display-4 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NTFS Permissions Collections -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-folder-symlink"></i> Production Collections
+            <span class="badge bg-primary ms-2">fsapp</span>
+        </div>
+        <div class="card-body">
+            @if (Model.Collections.Count == 0)
+            {
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i> No NTFS Permissions collections in production.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table id="ntfsPermissionsTable" class="table table-striped table-hover sortable-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort-type="text">Computer <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="text">Scan Path <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="date">Collected <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="number">Folders <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="number">ACLs <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="number">ACEs <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="number">SIDs <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="sortable" data-sort-type="number">Total <i class="bi bi-arrow-down-up sort-icon"></i></th>
+                                <th class="text-center" style="width: 60px;">Logs</th>
+                                @if (canDelete)
+                                {
+                                    <th>Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var collection in Model.Collections)
+                            {
+                                <tr>
+                                    <td data-sort-value="@(collection.ComputerName ?? "")">@(collection.ComputerName ?? "-")</td>
+                                    <td data-sort-value="@(collection.ScanPath ?? "")">
+                                        @if (!string.IsNullOrEmpty(collection.ScanPath))
+                                        {
+                                            <span title="@collection.ScanPath">
+                                                @(collection.ScanPath.Length > 30 ? collection.ScanPath.Substring(0, 30) + "..." : collection.ScanPath)
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td data-sort-value="@(collection.CollectionDateTime?.ToString("o") ?? "")">
+                                        @if (collection.CollectionDateTime.HasValue)
+                                        {
+                                            <span data-utc="@collection.CollectionDateTime.Value.ToString("o")" data-format="short">@collection.CollectionDateTime.Value.ToString("g")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td data-sort-value="@collection.FoldersCount">@collection.FoldersCount.ToString("N0")</td>
+                                    <td data-sort-value="@collection.AclCount">@collection.AclCount.ToString("N0")</td>
+                                    <td data-sort-value="@collection.AceCount">@collection.AceCount.ToString("N0")</td>
+                                    <td data-sort-value="@collection.SidsCount">@collection.SidsCount.ToString("N0")</td>
+                                    <td data-sort-value="@collection.TotalRecords"><strong>@collection.TotalRecords.ToString("N0")</strong></td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-inventory-id="@collection.InventoryId"
+                                                data-computer-name="@(collection.ComputerName ?? "Unknown")"
+                                                data-scan-path="@(collection.ScanPath ?? "Unknown")"
+                                                onclick="showProductionLogs(this.dataset.inventoryId, this.dataset.computerName, this.dataset.scanPath)"
+                                                title="View collection logs">
+                                            <i class="bi bi-journal-text"></i>
+                                        </button>
+                                    </td>
+                                    @if (canDelete)
+                                    {
+                                        var isDeleting = activeDeletionIds.Contains(collection.InventoryId.ToString());
+                                        <td class="delete-cell" data-id="@collection.InventoryId">
+                                            <div class="delete-btn-container @(isDeleting ? "d-none" : "")">
+                                                <form asp-action="DeleteNtfsCollection" asp-route-id="@collection.InventoryId"
+                                                      method="post" style="display: inline;" class="delete-form"
+                                                      data-confirm="WARNING: You are about to permanently delete this collection from PRODUCTION data.\n\nComputer: @(collection.ComputerName ?? "Unknown")\nPath: @(collection.ScanPath ?? "Unknown")\nRecords: @collection.TotalRecords.ToString("N0")\n\nThis action CANNOT be undone. Are you sure?">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger delete-btn" title="Delete from production">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <div class="progress-container @(isDeleting ? "" : "d-none")">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="spinner-border spinner-border-sm text-danger me-2" role="status"></div>
+                                                    <div class="progress flex-grow-1" style="height: 6px; min-width: 80px;">
+                                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+                                                             role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                                <small class="progress-text text-muted" style="font-size: 0.7rem;">@(isDeleting ? "Queued..." : "")</small>
+                                            </div>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-secondary">
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td><strong>@Model.Collections.Sum(c => c.FoldersCount).ToString("N0")</strong></td>
+                                <td><strong>@Model.Collections.Sum(c => c.AclCount).ToString("N0")</strong></td>
+                                <td><strong>@Model.Collections.Sum(c => c.AceCount).ToString("N0")</strong></td>
+                                <td><strong>@Model.Collections.Sum(c => c.SidsCount).ToString("N0")</strong></td>
+                                <td><strong>@Model.TotalRecords.ToString("N0")</strong></td>
+                                <td></td>
+                                @if (canDelete)
+                                {
+                                    <td></td>
+                                }
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .sortable-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .sortable-table th.sortable:hover {
+        background-color: rgba(0, 0, 0, 0.075);
+    }
+    .sortable-table th .sort-icon {
+        opacity: 0.3;
+        font-size: 0.75em;
+    }
+    .sortable-table th.sort-asc .sort-icon,
+    .sortable-table th.sort-desc .sort-icon {
+        opacity: 1;
+    }
+</style>
+
+<!-- Collection Logs Modal -->
+<div class="modal fade" id="logsModal" tabindex="-1" aria-labelledby="logsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logsModalLabel">
+                    <i class="bi bi-journal-text"></i> Collection Logs
+                </h5>
+                <span class="ms-auto me-3 text-muted" id="logsInventoryId"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3 g-2">
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="logsSeverityFilter">
+                            <option value="">All Severities</option>
+                            <option value="ERROR">Error</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="INFO">Info</option>
+                            <option value="SUCCESS">Success</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="logsSourceFilter">
+                            <option value="">All Sources</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="logsSearchFilter" placeholder="Search messages...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="loadProductionLogs()">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearLogsFilter()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">
+                        <span id="logsInventoryLabel"></span>
+                        <span class="badge bg-secondary ms-2" id="logsDataSource"></span>
+                    </small>
+                    <small class="text-muted">
+                        Showing <strong id="logsShowing">0</strong> of <strong id="logsTotalItems">0</strong> logs
+                    </small>
+                </div>
+
+                <div id="logsLoading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading collection logs...</p>
+                </div>
+
+                <div id="logsError" class="alert alert-danger" style="display: none;">
+                    <i class="bi bi-exclamation-triangle"></i> <span id="logsErrorMessage"></span>
+                </div>
+
+                <div id="logsEmpty" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-info-circle"></i> No collection logs found for this filter.
+                </div>
+
+                <div id="logsTableContainer" style="display: none;">
+                    <table class="table table-sm table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 150px;">Timestamp</th>
+                                <th style="width: 80px;">Severity</th>
+                                <th style="width: 120px;">Source</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody"></tbody>
+                    </table>
+                </div>
+
+                <nav id="logsPagination" class="mt-3" style="display: none;">
+                    <ul class="pagination pagination-sm justify-content-center mb-0"></ul>
+                </nav>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="deleteConfirmMessage" style="white-space: pre-line;"></div>
+                <hr />
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="doNotPromptAgain">
+                    <label class="form-check-label" for="doNotPromptAgain">
+                        Do not prompt again for this session
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var activeDeletionIds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(activeDeletionIds));
+
+        if (activeDeletionIds && activeDeletionIds.length > 0) {
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/upload')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('ProgressUpdate', function(data) {
+                console.log('Progress update:', data);
+
+                var cell = document.querySelector('.delete-cell[data-id="' + data.uploadId + '"]');
+                if (!cell) return;
+
+                var progressContainer = cell.querySelector('.progress-container');
+                if (!progressContainer) return;
+
+                var progressBar = progressContainer.querySelector('.progress-bar');
+                var progressText = progressContainer.querySelector('.progress-text');
+                var spinner = progressContainer.querySelector('.spinner-border');
+
+                if (progressBar) {
+                    progressBar.style.width = data.percent + '%';
+                }
+
+                if (progressText) {
+                    var shortMsg = data.message;
+                    if (data.currentTable) {
+                        shortMsg = data.currentTable.split('.').pop() + ' ' + data.percent + '%';
+                    } else if (data.percent > 0) {
+                        shortMsg = data.percent + '%';
+                    }
+                    progressText.textContent = shortMsg;
+                }
+
+                if (data.phase === 'Completed') {
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped', 'bg-danger');
+                        progressBar.classList.add('bg-success');
+                    }
+                    if (spinner) spinner.classList.add('d-none');
+                    if (progressText) progressText.textContent = 'Done!';
+
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
+                } else if (data.phase === 'Failed') {
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    }
+                    if (spinner) spinner.classList.add('d-none');
+                    if (progressText) {
+                        progressText.classList.remove('text-muted');
+                        progressText.classList.add('text-danger');
+                        progressText.textContent = 'Failed';
+                    }
+                }
+            });
+
+            connection.start().then(function() {
+                console.log('SignalR connected, subscribing to', activeDeletionIds.length, 'active deletions');
+                activeDeletionIds.forEach(function(id) {
+                    connection.invoke('SubscribeToUpload', id);
+                });
+            }).catch(function(err) {
+                console.error('SignalR connection error:', err);
+            });
+        }
+
+        // Delete confirmation modal logic
+        var deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        var deleteConfirmMessage = document.getElementById('deleteConfirmMessage');
+        var confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        var doNotPromptCheckbox = document.getElementById('doNotPromptAgain');
+        var pendingDeleteForm = null;
+        var sessionStorageKey = 'ntfsPermissions_skipDeletePrompt';
+
+        // Check if user previously checked "do not prompt again" in this session
+        var skipPrompt = sessionStorage.getItem(sessionStorageKey) === 'true';
+
+        function submitDeleteForm(form) {
+            var btn = form.querySelector('.delete-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+            form.submit();
+        }
+
+        confirmDeleteBtn.addEventListener('click', function() {
+            // Save preference to sessionStorage if checkbox is checked
+            if (doNotPromptCheckbox.checked) {
+                sessionStorage.setItem(sessionStorageKey, 'true');
+                skipPrompt = true;
+            }
+
+            deleteModal.hide();
+
+            if (pendingDeleteForm) {
+                submitDeleteForm(pendingDeleteForm);
+                pendingDeleteForm = null;
+            }
+        });
+
+        document.querySelectorAll('.delete-form').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // If user opted to skip prompts, submit directly
+                if (skipPrompt) {
+                    submitDeleteForm(form);
+                    return;
+                }
+
+                // Get confirmation message and replace literal \n with actual newlines
+                var confirmMsg = form.getAttribute('data-confirm');
+                confirmMsg = confirmMsg.replace(/\\n/g, '\n');
+
+                // Show modal
+                deleteConfirmMessage.textContent = confirmMsg;
+                pendingDeleteForm = form;
+                doNotPromptCheckbox.checked = false;
+                deleteModal.show();
+            });
+        });
+
+        // Table sorting logic
+        var table = document.getElementById('ntfsPermissionsTable');
+        if (table) {
+            var headers = table.querySelectorAll('th.sortable');
+            var tbody = table.querySelector('tbody');
+            var sortStorageKey = 'ntfsPermissions_sortState';
+
+            // Function to apply sort to a column
+            function sortTable(columnIndex, ascending) {
+                var header = headers[columnIndex];
+                if (!header) return;
+
+                var sortType = header.getAttribute('data-sort-type') || 'text';
+
+                // Remove sort classes from all headers and reset icons
+                headers.forEach(function(h) {
+                    h.classList.remove('sort-asc', 'sort-desc');
+                    var icon = h.querySelector('.sort-icon');
+                    if (icon) {
+                        icon.classList.remove('bi-arrow-up', 'bi-arrow-down');
+                        icon.classList.add('bi-arrow-down-up');
+                    }
+                });
+
+                // Add sort class to header and update icon
+                header.classList.add(ascending ? 'sort-asc' : 'sort-desc');
+                var headerIcon = header.querySelector('.sort-icon');
+                if (headerIcon) {
+                    headerIcon.classList.remove('bi-arrow-down-up');
+                    headerIcon.classList.add(ascending ? 'bi-arrow-up' : 'bi-arrow-down');
+                }
+
+                // Get all rows and sort them
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort(function(a, b) {
+                    var cellA = a.cells[columnIndex];
+                    var cellB = b.cells[columnIndex];
+                    var valueA = cellA.getAttribute('data-sort-value') || cellA.textContent.trim();
+                    var valueB = cellB.getAttribute('data-sort-value') || cellB.textContent.trim();
+
+                    var result = 0;
+                    if (sortType === 'number') {
+                        var numA = parseFloat(valueA) || 0;
+                        var numB = parseFloat(valueB) || 0;
+                        result = numA - numB;
+                    } else if (sortType === 'date') {
+                        var dateA = valueA ? new Date(valueA).getTime() : 0;
+                        var dateB = valueB ? new Date(valueB).getTime() : 0;
+                        result = dateA - dateB;
+                    } else {
+                        result = valueA.localeCompare(valueB, undefined, { sensitivity: 'base' });
+                    }
+
+                    return ascending ? result : -result;
+                });
+
+                // Re-append rows in sorted order
+                rows.forEach(function(row) {
+                    tbody.appendChild(row);
+                });
+
+                // Save sort state to sessionStorage
+                sessionStorage.setItem(sortStorageKey, JSON.stringify({ column: columnIndex, ascending: ascending }));
+            }
+
+            // Add click handlers to headers
+            headers.forEach(function(header, columnIndex) {
+                header.addEventListener('click', function() {
+                    var isAscending = !header.classList.contains('sort-asc');
+                    sortTable(columnIndex, isAscending);
+                });
+            });
+
+            // Restore sort state from sessionStorage or default to Computer (column 0) ascending
+            var savedState = sessionStorage.getItem(sortStorageKey);
+            if (savedState) {
+                try {
+                    var state = JSON.parse(savedState);
+                    sortTable(state.column, state.ascending);
+                } catch (e) {
+                    // Invalid state, use default
+                    sortTable(0, true);
+                }
+            } else {
+                // Default: sort by Computer ascending
+                sortTable(0, true);
+            }
+        }
+    });
+
+    // Collection Logs functionality
+    var currentInventoryId = null;
+    var currentPage = 1;
+    var pageSize = 50;
+
+    function showProductionLogs(inventoryId, computerName, scanPath) {
+        currentInventoryId = inventoryId;
+        currentPage = 1;
+
+        // Reset filters
+        document.getElementById('logsSeverityFilter').value = '';
+        document.getElementById('logsSourceFilter').innerHTML = '<option value="">All Sources</option>';
+        document.getElementById('logsSearchFilter').value = '';
+
+        // Update modal title and inventory ID
+        document.getElementById('logsModalLabel').innerHTML =
+            '<i class="bi bi-journal-text"></i> Collection Logs - ' + escapeHtml(computerName);
+        document.getElementById('logsInventoryId').textContent = 'Inventory ID: ' + inventoryId;
+        document.getElementById('logsInventoryLabel').textContent = scanPath;
+
+        // Show modal
+        var modal = new bootstrap.Modal(document.getElementById('logsModal'));
+        modal.show();
+
+        // Load logs
+        loadProductionLogs();
+    }
+
+    function loadProductionLogs() {
+        if (!currentInventoryId) return;
+
+        var severity = document.getElementById('logsSeverityFilter').value;
+        var source = document.getElementById('logsSourceFilter').value;
+        var search = document.getElementById('logsSearchFilter').value;
+
+        // Show loading, hide others
+        document.getElementById('logsLoading').style.display = 'block';
+        document.getElementById('logsError').style.display = 'none';
+        document.getElementById('logsEmpty').style.display = 'none';
+        document.getElementById('logsTableContainer').style.display = 'none';
+        document.getElementById('logsPagination').style.display = 'none';
+
+        var url = '/api/collection-logs/production/ntfs/' + currentInventoryId +
+            '?page=' + currentPage + '&pageSize=' + pageSize;
+        if (severity) url += '&severity=' + encodeURIComponent(severity);
+        if (source) url += '&source=' + encodeURIComponent(source);
+        if (search) url += '&search=' + encodeURIComponent(search);
+
+        fetch(url)
+            .then(function(response) { return response.json(); })
+            .then(function(result) {
+                document.getElementById('logsLoading').style.display = 'none';
+
+                if (!result.success) {
+                    document.getElementById('logsError').style.display = 'block';
+                    document.getElementById('logsErrorMessage').textContent = result.error || 'Failed to load logs';
+                    return;
+                }
+
+                var data = result.data;
+                document.getElementById('logsDataSource').textContent = data.dataSource || '';
+                document.getElementById('logsTotalItems').textContent = data.totalItems || 0;
+
+                if (!data.logs || data.logs.length === 0) {
+                    document.getElementById('logsEmpty').style.display = 'block';
+                    document.getElementById('logsShowing').textContent = '0';
+                    return;
+                }
+
+                document.getElementById('logsShowing').textContent = data.logs.length;
+                renderLogsTable(data.logs);
+                renderPagination(data.page, data.totalPages, data.totalItems);
+            })
+            .catch(function(err) {
+                document.getElementById('logsLoading').style.display = 'none';
+                document.getElementById('logsError').style.display = 'block';
+                document.getElementById('logsErrorMessage').textContent = 'Error loading logs: ' + err.message;
+            });
+    }
+
+    function renderLogsTable(logs) {
+        var tbody = document.getElementById('logsTableBody');
+        tbody.innerHTML = '';
+
+        logs.forEach(function(log) {
+            var row = document.createElement('tr');
+
+            var severityClass = '';
+            if (log.severity === 'ERROR') severityClass = 'text-danger';
+            else if (log.severity === 'WARNING') severityClass = 'text-warning';
+            else if (log.severity === 'SUCCESS') severityClass = 'text-success';
+
+            var timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : '';
+            var message = escapeHtml(log.message || '');
+            if (log.path) {
+                message += '<br><small class="text-muted">' + escapeHtml(log.path) + '</small>';
+            }
+
+            row.innerHTML =
+                '<td><small>' + timestamp + '</small></td>' +
+                '<td><span class="badge ' + getSeverityBadgeClass(log.severity) + '">' + (log.severity || 'INFO') + '</span></td>' +
+                '<td><small>' + escapeHtml(log.source || '') + '</small></td>' +
+                '<td><small>' + message + '</small></td>';
+
+            tbody.appendChild(row);
+        });
+
+        document.getElementById('logsTableContainer').style.display = 'block';
+    }
+
+    function renderPagination(page, totalPages, totalItems) {
+        if (totalPages <= 1) {
+            document.getElementById('logsPagination').style.display = 'none';
+            return;
+        }
+
+        var ul = document.querySelector('#logsPagination ul');
+        ul.innerHTML = '';
+
+        // Previous button
+        var prevLi = document.createElement('li');
+        prevLi.className = 'page-item' + (page <= 1 ? ' disabled' : '');
+        prevLi.innerHTML = '<a class="page-link" href="#">&laquo;</a>';
+        if (page > 1) {
+            prevLi.querySelector('a').onclick = function(e) { e.preventDefault(); currentPage = page - 1; loadProductionLogs(); };
+        }
+        ul.appendChild(prevLi);
+
+        // Page numbers
+        var startPage = Math.max(1, page - 2);
+        var endPage = Math.min(totalPages, page + 2);
+
+        for (var i = startPage; i <= endPage; i++) {
+            var li = document.createElement('li');
+            li.className = 'page-item' + (i === page ? ' active' : '');
+            li.innerHTML = '<a class="page-link" href="#">' + i + '</a>';
+            (function(pageNum) {
+                li.querySelector('a').onclick = function(e) { e.preventDefault(); currentPage = pageNum; loadProductionLogs(); };
+            })(i);
+            ul.appendChild(li);
+        }
+
+        // Next button
+        var nextLi = document.createElement('li');
+        nextLi.className = 'page-item' + (page >= totalPages ? ' disabled' : '');
+        nextLi.innerHTML = '<a class="page-link" href="#">&raquo;</a>';
+        if (page < totalPages) {
+            nextLi.querySelector('a').onclick = function(e) { e.preventDefault(); currentPage = page + 1; loadProductionLogs(); };
+        }
+        ul.appendChild(nextLi);
+
+        document.getElementById('logsPagination').style.display = 'block';
+    }
+
+    function clearLogsFilter() {
+        document.getElementById('logsSeverityFilter').value = '';
+        document.getElementById('logsSourceFilter').value = '';
+        document.getElementById('logsSearchFilter').value = '';
+        currentPage = 1;
+        loadProductionLogs();
+    }
+
+    function getSeverityBadgeClass(severity) {
+        switch (severity) {
+            case 'ERROR': return 'bg-danger';
+            case 'WARNING': return 'bg-warning text-dark';
+            case 'SUCCESS': return 'bg-success';
+            default: return 'bg-secondary';
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+}

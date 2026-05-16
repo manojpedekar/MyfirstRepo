@@ -1,0 +1,612 @@
+@model DomainEditViewModel
+@{
+    ViewData["Title"] = Model.IsNew ? "Add Domain" : $"Edit: {Model.Domain.DomainName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i class="bi bi-diagram-3"></i> @(Model.IsNew ? "Add Domain" : "Edit Domain")
+    </h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+        @if (!Model.IsNew)
+        {
+            <a asp-action="Notes" asp-route-id="@Model.Domain.DomainID" class="btn btn-outline-info">
+                <i class="bi bi-chat-left-text"></i> Notes
+                @if (Model.Domain.Notes.Count > 0)
+                {
+                    <span class="badge bg-light text-dark ms-1">@Model.Domain.Notes.Count</span>
+                }
+            </a>
+            @if (Model.Domain.HasCollection)
+            {
+                <a asp-action="Logs" asp-route-id="@Model.Domain.DomainID" class="btn btn-outline-secondary">
+                    <i class="bi bi-journal-text"></i> Logs
+                </a>
+            }
+            else
+            {
+                <button type="button" class="btn btn-outline-secondary" disabled title="No collection data available">
+                    <i class="bi bi-journal-text"></i> Logs
+                </button>
+            }
+        }
+        <button type="submit" form="domainForm" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> @(Model.IsNew ? "Create Domain" : "Save Changes")
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Form Column -->
+    <div class="col-lg-8">
+        <form asp-action="Save" method="post" id="domainForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Domain.DomainID" />
+            <!-- Identity Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-info-subtle">
+                    <i class="bi bi-card-heading"></i> Identity
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="Domain.DomainName" class="form-label">
+                                Domain Name <span class="text-danger">*</span>
+                                @if (Model.AdInventory?.HasInventory == true)
+                                {
+                                    <i class="bi bi-lock text-muted" title="Locked - domain has inventory data"></i>
+                                }
+                            </label>
+                            @if (Model.AdInventory?.HasInventory == true)
+                            {
+                                <input asp-for="Domain.DomainName" class="form-control" readonly />
+                            }
+                            else
+                            {
+                                <input asp-for="Domain.DomainName" class="form-control" required placeholder="e.g., contoso.local" />
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Domain.NetBIOSName" class="form-label">
+                                NetBIOS Name
+                                @if (Model.AdInventory?.HasInventory == true)
+                                {
+                                    <i class="bi bi-lock text-muted" title="Locked - domain has inventory data"></i>
+                                }
+                            </label>
+                            @if (Model.AdInventory?.HasInventory == true)
+                            {
+                                <input asp-for="Domain.NetBIOSName" class="form-control" readonly />
+                            }
+                            else
+                            {
+                                <input asp-for="Domain.NetBIOSName" class="form-control" maxlength="15" placeholder="e.g., CONTOSO" />
+                            }
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label asp-for="Domain.BusinessUnit" class="form-label">Business Unit</label>
+                            <input asp-for="Domain.BusinessUnit" class="form-control" placeholder="e.g., Finance" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Domain.ManagementServer" class="form-label">Management Server</label>
+                            <input asp-for="Domain.ManagementServer" class="form-control" placeholder="e.g., dc01.contoso.local" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (!Model.IsNew)
+            {
+                <!-- AD Inventory Section with Tabs -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success-subtle d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-database"></i> AD Inventory</span>
+                        @if (Model.AdInventory?.HasInventory == true)
+                        {
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i>
+                                <span data-utc="@Model.AdInventory.CollectionDateTime?.ToString("o")" data-format="relative">
+                                    @Model.AdInventory.CollectionDateTime?.ToString("g")
+                                </span>
+                            </small>
+                        }
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="nav nav-tabs px-3 pt-2" id="inventoryTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview-pane"
+                                        type="button" role="tab" aria-controls="overview-pane" aria-selected="true">
+                                    <i class="bi bi-info-circle"></i> Overview
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="sites-tab" data-bs-toggle="tab" data-bs-target="#sites-pane"
+                                        type="button" role="tab" aria-controls="sites-pane" aria-selected="false">
+                                    <i class="bi bi-geo-alt"></i> Sites
+                                    @if (Model.SitesAndServices?.SiteCount > 0)
+                                    {
+                                        <span class="badge bg-secondary ms-1">@Model.SitesAndServices.SiteCount</span>
+                                    }
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="health-tab" data-bs-toggle="tab" data-bs-target="#health-pane"
+                                        type="button" role="tab" aria-controls="health-pane" aria-selected="false">
+                                    <i class="bi bi-heart-pulse"></i> Health
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="adfs-tab" data-bs-toggle="tab" data-bs-target="#adfs-pane"
+                                        type="button" role="tab" aria-controls="adfs-pane" aria-selected="false">
+                                    <i class="bi bi-shield-lock"></i> AD FS
+                                    @if (Model.AdfsConfiguration?.HasConfiguration == true)
+                                    {
+                                        <span class="badge bg-primary ms-1">@Model.AdfsConfiguration.Services.Count</span>
+                                    }
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pki-tab" data-bs-toggle="tab" data-bs-target="#pki-pane"
+                                        type="button" role="tab" aria-controls="pki-pane" aria-selected="false">
+                                    <i class="bi bi-file-earmark-lock"></i> PKI
+                                    @if (Model.PkiSummary?.HasData == true)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1">@Model.PkiSummary.EnterpriseCAs.Count CA</span>
+                                    }
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content p-3" id="inventoryTabsContent">
+                            @await Html.PartialAsync("_OverviewTab", Model)
+                            @await Html.PartialAsync("_SitesTab", Model)
+                            @await Html.PartialAsync("_HealthTab", Model)
+                            @await Html.PartialAsync("_AdfsTab", Model)
+                            @await Html.PartialAsync("_PkiTab", Model)
+                        </div>
+                    </div>
+                </div>
+
+                @* Terminal Server License Servers Card - below AD Inventory *@
+                @if (Model.AdInventory?.HasInventory == true)
+                {
+                    @await Html.PartialAsync("_TSLicenseServersCard", Model)
+                }
+            }
+
+            <!-- Details Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-file-text"></i> Details
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Domain.Purpose" class="form-label">Purpose</label>
+                        <textarea asp-for="Domain.Purpose" class="form-control" rows="3" maxlength="500"
+                                  placeholder="Describe the purpose of this domain..."></textarea>
+                        <div class="form-text">Maximum 500 characters</div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Domain.Roadmap" class="form-label">Roadmap</label>
+                        <textarea asp-for="Domain.Roadmap" class="form-control" rows="3" maxlength="500"
+                                  placeholder="Describe future plans for this domain..."></textarea>
+                        <div class="form-text">Maximum 500 characters</div>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+        @if (!Model.IsNew)
+        {
+            <!-- Audit Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary-subtle">
+                    <i class="bi bi-clock-history"></i> Audit
+                </div>
+                <div class="card-body">
+                    <dl class="mb-0">
+                        <dt>Record Created</dt>
+                        <dd>
+                            <span data-utc="@Model.Domain.CreatedAt.ToString("o")" data-format="full">
+                                @Model.Domain.CreatedAt.ToString("F")
+                            </span>
+                        </dd>
+                        <dt>Last Updated</dt>
+                        <dd>
+                            @if (Model.Domain.UpdatedAt.HasValue)
+                            {
+                                <span data-utc="@Model.Domain.UpdatedAt.Value.ToString("o")" data-format="full">
+                                    @Model.Domain.UpdatedAt.Value.ToString("F")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted fst-italic">Never</span>
+                            }
+                        </dd>
+                        <dt>Last AD Inventory</dt>
+                        <dd class="mb-0">
+                            @if (Model.Domain.LastInventoryDate.HasValue)
+                            {
+                                <span data-utc="@Model.Domain.LastInventoryDate.Value.ToString("o")" data-format="full">
+                                    @Model.Domain.LastInventoryDate.Value.ToString("F")
+                                </span>
+                            }
+                            else if (Model.AdInventory?.CollectionDateTime.HasValue == true)
+                            {
+                                <span data-utc="@Model.AdInventory.CollectionDateTime.Value.ToString("o")" data-format="full">
+                                    @Model.AdInventory.CollectionDateTime.Value.ToString("F")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted fst-italic">Never</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+        }
+
+        <!-- Trust Relationships Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary-subtle d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-link-45deg"></i> Trust Relationships</span>
+                @if (Model.AdInventory?.HasInventory == true)
+                {
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#trustsModal">
+                        <i class="bi bi-diagram-3"></i> View All Trusts
+                    </button>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.AdInventory?.HasKeyTrustData == true)
+                {
+                    @* Show read-only badges from inventory data *@
+                    <div class="small text-muted mb-2">
+                        <i class="bi bi-database"></i> From AD Inventory
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        @{
+                            var admgmt = Model.AdInventory.KeyTrusts.GetValueOrDefault("ADMgmt");
+                            var ssnccorp = Model.AdInventory.KeyTrusts.GetValueOrDefault("SSNCCorp");
+                            var sscviolet = Model.AdInventory.KeyTrusts.GetValueOrDefault("SSCViolet");
+                        }
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small">AD Management</span>
+                            @if (admgmt?.HasTrust == true)
+                            {
+                                <span class="badge @admgmt.BadgeClass" title="@admgmt.MatchedDomain">
+                                    <i class="bi @admgmt.DirectionIcon"></i> @admgmt.DirectionText
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary"><i class="bi bi-dash"></i> None</span>
+                            }
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small">SSNC Corp</span>
+                            @if (ssnccorp?.HasTrust == true)
+                            {
+                                <span class="badge @ssnccorp.BadgeClass" title="@ssnccorp.MatchedDomain">
+                                    <i class="bi @ssnccorp.DirectionIcon"></i> @ssnccorp.DirectionText
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary"><i class="bi bi-dash"></i> None</span>
+                            }
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small">SSC Violet</span>
+                            @if (sscviolet?.HasTrust == true)
+                            {
+                                <span class="badge @sscviolet.BadgeClass" title="@sscviolet.MatchedDomain">
+                                    <i class="bi @sscviolet.DirectionIcon"></i> @sscviolet.DirectionText
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary"><i class="bi bi-dash"></i> None</span>
+                            }
+                        </div>
+                    </div>
+                    @* Hidden inputs to preserve existing values *@
+                    <input type="hidden" asp-for="Domain.Trust_ADMgmt_TriStateID" form="domainForm" />
+                    <input type="hidden" asp-for="Domain.Trust_SSNC_Corp_TriStateID" form="domainForm" />
+                    <input type="hidden" asp-for="Domain.Trust_SSCViolet_TriStateID" form="domainForm" />
+                }
+                else
+                {
+                    @* Show editable dropdowns when no inventory data *@
+                    <div class="mb-3">
+                        <label asp-for="Domain.Trust_ADMgmt_TriStateID" class="form-label small mb-1">AD Management</label>
+                        <select asp-for="Domain.Trust_ADMgmt_TriStateID" class="form-select form-select-sm" form="domainForm">
+                            @foreach (var state in Model.TriStates)
+                            {
+                                <option value="@state.Id">@state.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Domain.Trust_SSNC_Corp_TriStateID" class="form-label small mb-1">SSNC Corp</label>
+                        <select asp-for="Domain.Trust_SSNC_Corp_TriStateID" class="form-select form-select-sm" form="domainForm">
+                            @foreach (var state in Model.TriStates)
+                            {
+                                <option value="@state.Id">@state.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label asp-for="Domain.Trust_SSCViolet_TriStateID" class="form-label small mb-1">SSC Violet</label>
+                        <select asp-for="Domain.Trust_SSCViolet_TriStateID" class="form-select form-select-sm" form="domainForm">
+                            @foreach (var state in Model.TriStates)
+                            {
+                                <option value="@state.Id">@state.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Capabilities Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-info-subtle">
+                <i class="bi bi-gear"></i> Capabilities
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <label for="@Html.IdFor(m => m.Domain.IsPatchHold)" class="mb-0">On Patch Hold</label>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsPatchHold" class="form-check-input" form="domainForm" />
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <label for="@Html.IdFor(m => m.Domain.HasHealthCheck)" class="mb-0">Health Check</label>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.HasHealthCheck" class="form-check-input" form="domainForm" />
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <label for="@Html.IdFor(m => m.Domain.HasNetwrixAuditor)" class="mb-0">Netwrix Auditor</label>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.HasNetwrixAuditor" class="form-check-input" form="domainForm" />
+                        </div>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <label for="@Html.IdFor(m => m.Domain.IsSafeguardReady)" class="mb-0">Safeguard Ready</label>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsSafeguardReady" class="form-check-input" form="domainForm" />
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Ownership & Status Section (moved from left column) -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning-subtle">
+                <i class="bi bi-person-badge"></i> Ownership & Status
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label asp-for="Domain.DSResponsibilityLevelID" class="form-label small mb-1">DS Responsibility</label>
+                    <select asp-for="Domain.DSResponsibilityLevelID" class="form-select form-select-sm" form="domainForm">
+                        <option value="">-- Select --</option>
+                        @foreach (var level in Model.ResponsibilityLevels)
+                        {
+                            <option value="@level.Id">@level.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Domain.BaselineStatusID" class="form-label small mb-1">Baseline Status</label>
+                    <select asp-for="Domain.BaselineStatusID" class="form-select form-select-sm" form="domainForm">
+                        @foreach (var status in Model.BaselineStatuses)
+                        {
+                            <option value="@status.Id">@status.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Domain.POC" class="form-label small mb-1">Point of Contact</label>
+                    <input asp-for="Domain.POC" class="form-control form-control-sm" form="domainForm" placeholder="e.g., John Smith" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Domain.IsCloudIntegrated" class="form-label small mb-1">Cloud Integration</label>
+                    <select asp-for="Domain.IsCloudIntegrated" class="form-select form-select-sm" form="domainForm">
+                        @foreach (var state in Model.TriStates)
+                        {
+                            <option value="@state.Id">@state.Name</option>
+                        }
+                    </select>
+                </div>
+                <hr class="my-2" />
+                <div class="row">
+                    <div class="col-6 d-flex flex-column gap-2">
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsThirdPartyManaged" class="form-check-input" form="domainForm" />
+                            <label asp-for="Domain.IsThirdPartyManaged" class="form-check-label small">Third Party Managed</label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsClientFacing" class="form-check-input" form="domainForm" />
+                            <label asp-for="Domain.IsClientFacing" class="form-check-label small">Client Facing</label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsDecommissioned" class="form-check-input" form="domainForm" id="isDecommissioned" />
+                            <label asp-for="Domain.IsDecommissioned" class="form-check-label small text-danger">Decommissioned</label>
+                        </div>
+                    </div>
+                    <div class="col-6 d-flex flex-column gap-2">
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsSPLA" class="form-check-input" form="domainForm" />
+                            <label asp-for="Domain.IsSPLA" class="form-check-label small">SPLA</label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.IsRegulated" class="form-check-input" form="domainForm" />
+                            <label asp-for="Domain.IsRegulated" class="form-check-label small">Regulated Domain</label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input asp-for="Domain.MSPCustomer" class="form-check-input" form="domainForm" />
+                            <label asp-for="Domain.MSPCustomer" class="form-check-label small">MSP Customer</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* KMS Services Card - domain-scoped *@
+        @if (!Model.IsNew)
+        {
+            @await Html.PartialAsync("_KmsServicesCard", Model)
+        }
+
+    </div>
+</div>
+
+@* Sites & Services Modals *@
+@if (Model.SitesAndServices?.HasData == true)
+{
+    @await Html.PartialAsync("_SiteLinksModal", Model)
+    @await Html.PartialAsync("_SubnetsModal", Model)
+}
+
+@* Trust Relationships Modal *@
+@if (Model.AdInventory?.HasInventory == true)
+{
+    @await Html.PartialAsync("_TrustsModal", Model)
+}
+
+@* PKI Modals *@
+@if (Model.PkiSummary?.HasData == true)
+{
+    @await Html.PartialAsync("_CertificateTemplatesModal", Model)
+    @await Html.PartialAsync("_TrustedRootCAsModal", Model)
+    @await Html.PartialAsync("_NTAuthCertificatesModal", Model)
+    @await Html.PartialAsync("_EnterpriseCaModal", Model)
+}
+
+@if (Model.AdInventory?.DomainControllers.Count > 0)
+{
+    <!-- Domain Controllers Modal -->
+    <div class="modal fade" id="dcModal" tabindex="-1" aria-labelledby="dcModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dcModalLabel">
+                        <i class="bi bi-server"></i> Domain Controllers (@Model.AdInventory.DomainControllers.Count)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>DNS Hostname</th>
+                                <th>Operating System</th>
+                                <th class="text-center">Enabled</th>
+                                <th>Last Logon</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var dc in Model.AdInventory.DomainControllers)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@(dc.DNSHostName ?? dc.SamAccountName ?? "—")</strong>
+                                        @if (!string.IsNullOrEmpty(dc.DisplayName) && dc.DisplayName != dc.SamAccountName)
+                                        {
+                                            <br /><small class="text-muted">@dc.DisplayName</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(dc.OperatingSystem))
+                                        {
+                                            <span>@dc.OperatingSystem</span>
+                                            @if (!string.IsNullOrEmpty(dc.OperatingSystemVersion))
+                                            {
+                                                <br /><small class="text-muted">@dc.OperatingSystemVersion</small>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (dc.Enabled == true)
+                                        {
+                                            <span class="badge bg-success">Yes</span>
+                                        }
+                                        else if (dc.Enabled == false)
+                                        {
+                                            <span class="badge bg-danger">No</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (dc.LastLogonTimestamp.HasValue)
+                                        {
+                                            @if (dc.LastLogonTimestamp.Value > DateTime.UtcNow)
+                                            {
+                                                <span class="text-warning" title="@dc.LastLogonTimestamp.Value.ToString("o")">
+                                                    <i class="bi bi-exclamation-triangle"></i> Invalid Date
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span data-utc="@dc.LastLogonTimestamp.Value.ToString("o")" data-format="relative">
+                                                    @dc.LastLogonTimestamp.Value.ToString("g")
+                                                </span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Never</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Warn when checking decommissioned
+        var decommissionedCheckbox = document.getElementById('isDecommissioned');
+        if (decommissionedCheckbox) {
+            decommissionedCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    if (!confirm('Are you sure you want to mark this domain as decommissioned?')) {
+                        this.checked = false;
+                    }
+                }
+            });
+        }
+    });
+</script>
+}

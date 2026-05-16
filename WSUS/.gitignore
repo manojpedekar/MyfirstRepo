@@ -1,0 +1,17 @@
+# Build outputs (.NET projects under here, if any return)
+bin/
+obj/
+publish/
+
+# IDE / editor scratch
+.vscode/
+*.user
+*.suo
+
+# .NET appsettings overrides are environment-specific
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# Generated topology SVG (regenerate from .dot via Makefile)
+Topology/*.svg

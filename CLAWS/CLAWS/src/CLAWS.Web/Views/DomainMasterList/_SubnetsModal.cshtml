@@ -1,0 +1,203 @@
+@model DomainEditViewModel
+@* Subnets Modal - Lazy loaded content with site filter *@
+
+<div class="modal fade" id="subnetsModal" tabindex="-1" aria-labelledby="subnetsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="subnetsModalLabel">
+                    <i class="bi bi-hdd-network"></i> Subnets
+                    <span class="badge bg-secondary ms-2" id="subnetsCount">
+                        @(Model.SitesAndServices?.SubnetCount ?? 0)
+                    </span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Filter -->
+                <div class="p-2 border-bottom bg-light">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <label for="subnetSiteFilter" class="col-form-label col-form-label-sm">Filter by Site:</label>
+                        </div>
+                        <div class="col">
+                            <select id="subnetSiteFilter" class="form-select form-select-sm" onchange="filterSubnetsBySite()">
+                                <option value="">All Sites</option>
+                                <option value="__unassigned__">Unassigned</option>
+                                @if (Model.SitesAndServices?.Sites != null)
+                                {
+                                    @foreach (var site in Model.SitesAndServices.Sites.OrderBy(s => s.SiteName))
+                                    {
+                                        <option value="@site.SiteName">@site.SiteName (@site.SubnetCount)</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetSubnetFilter()">
+                                <i class="bi bi-x-lg"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="subnetsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading subnets...</p>
+                </div>
+                <div id="subnetsError" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle"></i> <span id="subnetsErrorMessage"></span>
+                </div>
+                <table class="table table-hover table-sm mb-0 d-none" id="subnetsTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Subnet</th>
+                            <th>Site</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subnetsBody">
+                    </tbody>
+                </table>
+                <div id="subnetsEmpty" class="text-center py-4 d-none">
+                    <i class="bi bi-inbox text-muted fs-1"></i>
+                    <p class="text-muted mt-2">No subnets found</p>
+                </div>
+                <div id="subnetsLoadMore" class="text-center py-3 d-none">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadMoreSubnets()">
+                        <i class="bi bi-arrow-down-circle"></i> Load More
+                    </button>
+                    <small class="d-block text-muted mt-1" id="subnetsLoadedCount"></small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let subnetsLoaded = false;
+        let subnetsSkip = 0;
+        const subnetsPageSize = 100;
+        let subnetsTotal = 0;
+        let currentSiteFilter = '';
+
+        const modal = document.getElementById('subnetsModal');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function () {
+                if (!subnetsLoaded) {
+                    loadSubnets();
+                }
+            });
+        }
+
+        window.loadSubnets = function(reset = false) {
+            const domainId = @Model.Domain.DomainID;
+
+            if (reset) {
+                subnetsSkip = 0;
+                document.getElementById('subnetsBody').innerHTML = '';
+            }
+
+            document.getElementById('subnetsLoading').classList.remove('d-none');
+            document.getElementById('subnetsTable').classList.add('d-none');
+            document.getElementById('subnetsError').classList.add('d-none');
+            document.getElementById('subnetsEmpty').classList.add('d-none');
+            document.getElementById('subnetsLoadMore').classList.add('d-none');
+
+            let url = `/DomainMasterList/GetSubnets?domainId=${domainId}&skip=${subnetsSkip}&take=${subnetsPageSize}`;
+            if (currentSiteFilter) {
+                url += `&site=${encodeURIComponent(currentSiteFilter)}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('subnetsLoading').classList.add('d-none');
+
+                    if (!data.success) {
+                        document.getElementById('subnetsError').classList.remove('d-none');
+                        document.getElementById('subnetsErrorMessage').textContent = data.message;
+                        return;
+                    }
+
+                    subnetsTotal = data.totalCount;
+                    document.getElementById('subnetsCount').textContent = subnetsTotal;
+
+                    if (subnetsTotal === 0) {
+                        document.getElementById('subnetsEmpty').classList.remove('d-none');
+                        return;
+                    }
+
+                    const tbody = document.getElementById('subnetsBody');
+
+                    data.subnets.forEach(function(subnet) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <strong>${escapeHtml(subnet.subnetName)}</strong>
+                                ${subnet.description ? `<br/><small class="text-muted">${escapeHtml(subnet.description)}</small>` : ''}
+                            </td>
+                            <td>
+                                ${subnet.siteName
+                                    ? `<span class="badge bg-primary">${escapeHtml(subnet.siteName)}</span>`
+                                    : '<span class="text-muted">Unassigned</span>'}
+                            </td>
+                            <td>
+                                ${subnet.location ? escapeHtml(subnet.location) : '<span class="text-muted">—</span>'}
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    document.getElementById('subnetsTable').classList.remove('d-none');
+                    subnetsLoaded = true;
+                    subnetsSkip += data.subnets.length;
+
+                    // Show/hide load more button
+                    if (data.hasMore) {
+                        document.getElementById('subnetsLoadMore').classList.remove('d-none');
+                        document.getElementById('subnetsLoadedCount').textContent =
+                            `Showing ${subnetsSkip} of ${subnetsTotal}`;
+                    } else {
+                        document.getElementById('subnetsLoadMore').classList.add('d-none');
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('subnetsLoading').classList.add('d-none');
+                    document.getElementById('subnetsError').classList.remove('d-none');
+                    document.getElementById('subnetsErrorMessage').textContent = 'Failed to load subnets: ' + error.message;
+                });
+        };
+
+        window.loadMoreSubnets = function() {
+            loadSubnets(false);
+        };
+
+        window.filterSubnetsBySite = function() {
+            const select = document.getElementById('subnetSiteFilter');
+            currentSiteFilter = select.value;
+            subnetsLoaded = false;
+            loadSubnets(true);
+        };
+
+        window.resetSubnetFilter = function() {
+            document.getElementById('subnetSiteFilter').value = '';
+            currentSiteFilter = '';
+            subnetsLoaded = false;
+            loadSubnets(true);
+        };
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    })();
+</script>

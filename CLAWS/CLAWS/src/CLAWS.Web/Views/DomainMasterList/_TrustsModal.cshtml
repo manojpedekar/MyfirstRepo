@@ -1,0 +1,177 @@
+@model DomainEditViewModel
+@* Trust Relationships Modal - Lazy loaded content *@
+
+<div class="modal fade" id="trustsModal" tabindex="-1" aria-labelledby="trustsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trustsModalLabel">
+                    <i class="bi bi-diagram-3"></i> Trust Relationships
+                    <span class="badge bg-secondary ms-2" id="trustsCount">0</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="trustsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading trust relationships...</p>
+                </div>
+                <div id="trustsError" class="alert alert-danger m-3 d-none">
+                    <i class="bi bi-exclamation-triangle"></i> <span id="trustsErrorMessage"></span>
+                </div>
+                <div id="trustsEmpty" class="alert alert-info m-3 d-none">
+                    <i class="bi bi-info-circle"></i> No trust relationships found for this domain.
+                </div>
+                <table class="table table-hover table-sm mb-0 d-none" id="trustsTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Target Domain</th>
+                            <th class="text-center" style="width: 120px;">Direction</th>
+                            <th class="text-center" style="width: 100px;">Type</th>
+                            <th class="text-center" style="width: 90px;">Transitive</th>
+                            <th style="width: 100px;">NetBIOS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trustsBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let trustsLoaded = false;
+
+        const modal = document.getElementById('trustsModal');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function () {
+                if (!trustsLoaded) {
+                    loadTrusts();
+                }
+            });
+        }
+
+        window.loadTrusts = function() {
+            const domainId = @Model.Domain.DomainID;
+
+            document.getElementById('trustsLoading').classList.remove('d-none');
+            document.getElementById('trustsTable').classList.add('d-none');
+            document.getElementById('trustsError').classList.add('d-none');
+            document.getElementById('trustsEmpty').classList.add('d-none');
+
+            fetch(`/DomainMasterList/GetTrusts?domainId=${domainId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('trustsLoading').classList.add('d-none');
+
+                    if (!data.success) {
+                        document.getElementById('trustsError').classList.remove('d-none');
+                        document.getElementById('trustsErrorMessage').textContent = data.message;
+                        return;
+                    }
+
+                    document.getElementById('trustsCount').textContent = data.totalCount;
+
+                    if (data.totalCount === 0) {
+                        document.getElementById('trustsEmpty').classList.remove('d-none');
+                        trustsLoaded = true;
+                        return;
+                    }
+
+                    const tbody = document.getElementById('trustsBody');
+                    tbody.innerHTML = '';
+
+                    const currentDomain = '@Model.Domain.DomainName'.toLowerCase();
+
+                    data.trusts.forEach(function(trust) {
+                        // Show the "other" domain (the one that's not the current domain)
+                        const otherDomain = trust.sourceDomain.toLowerCase() === currentDomain
+                            ? trust.targetDomain
+                            : trust.sourceDomain;
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <strong>${escapeHtml(otherDomain)}</strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-${getDirectionClass(trust.trustDirection)}">
+                                    <i class="bi ${getDirectionIcon(trust.trustDirection)}"></i>
+                                    ${escapeHtml(trust.trustDirection)}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-${getTypeClass(trust.trustType)}">
+                                    ${escapeHtml(trust.trustType)}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                ${trust.isTransitive
+                                    ? '<span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>'
+                                    : '<span class="badge bg-secondary"><i class="bi bi-x-lg"></i> No</span>'}
+                            </td>
+                            <td class="small text-muted">
+                                ${trust.flatName ? escapeHtml(trust.flatName) : '—'}
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    document.getElementById('trustsTable').classList.remove('d-none');
+                    trustsLoaded = true;
+                })
+                .catch(error => {
+                    document.getElementById('trustsLoading').classList.add('d-none');
+                    document.getElementById('trustsError').classList.remove('d-none');
+                    document.getElementById('trustsErrorMessage').textContent = 'Failed to load trusts: ' + error.message;
+                });
+        };
+
+        function getDirectionClass(direction) {
+            if (!direction) return 'secondary';
+            switch (direction.toUpperCase()) {
+                case 'BIDIRECTIONAL': return 'success';
+                case 'INBOUND': return 'info';
+                case 'OUTBOUND': return 'warning';
+                default: return 'secondary';
+            }
+        }
+
+        function getDirectionIcon(direction) {
+            if (!direction) return 'bi-dash';
+            switch (direction.toUpperCase()) {
+                case 'BIDIRECTIONAL': return 'bi-arrow-left-right';
+                case 'INBOUND': return 'bi-arrow-left';
+                case 'OUTBOUND': return 'bi-arrow-right';
+                default: return 'bi-dash';
+            }
+        }
+
+        function getTypeClass(type) {
+            if (!type) return 'secondary';
+            switch (type.toUpperCase()) {
+                case 'FOREST': return 'primary';
+                case 'PARENTCHILD':
+                case 'PARENT-CHILD': return 'success';
+                case 'EXTERNAL': return 'warning';
+                case 'CROSSLINK':
+                case 'CROSS-LINK': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    })();
+</script>

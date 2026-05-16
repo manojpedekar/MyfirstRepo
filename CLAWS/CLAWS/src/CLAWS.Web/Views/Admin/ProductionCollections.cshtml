@@ -1,0 +1,382 @@
+@model ProductionCollectionsViewModel
+@{
+    ViewData["Title"] = "Production Collections";
+    // Get all active deletion IDs from the model (queried from Hangfire)
+    var activeDeletionIds = Model.ActiveDeletionIds ?? new List<string>();
+}
+
+<h1 class="mb-4">
+    <i class="bi bi-database-check"></i> Production Collections
+</h1>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>Warning:</strong> This page allows you to delete data from the <strong>production</strong> database schemas
+    (<code>fsapp</code> and <code>ADData</code>). Deleted data cannot be recovered. Use with caution.
+</div>
+
+@* Note: Success/Error messages are shown by _Layout.cshtml from TempData *@
+
+@if (activeDeletionIds.Count > 0)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-hourglass-split"></i>
+        <strong>@activeDeletionIds.Count deletion job(s) in progress or queued.</strong>
+        Jobs are processed one at a time. Progress is shown inline below.
+    </div>
+}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">NTFS Permissions</h5>
+                        <h2 class="mb-0">@Model.NtfsCollections.Count</h2>
+                        <small>@Model.TotalNtfsRecords.ToString("N0") total records</small>
+                    </div>
+                    <i class="bi bi-folder-symlink display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">AD Inventory</h5>
+                        <h2 class="mb-0">@Model.AdCollections.Count</h2>
+                        <small>@Model.TotalAdRecords.ToString("N0") total records</small>
+                    </div>
+                    <i class="bi bi-people display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NTFS Permissions Collections -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-folder-symlink"></i> NTFS Permissions Collections
+        <span class="badge bg-primary ms-2">fsapp</span>
+    </div>
+    <div class="card-body">
+        @if (Model.NtfsCollections.Count == 0)
+        {
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> No NTFS Permissions collections in production.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Inventory ID</th>
+                            <th>Computer</th>
+                            <th>Scan Path</th>
+                            <th>Collected</th>
+                            <th>Folders</th>
+                            <th>ACLs</th>
+                            <th>ACEs</th>
+                            <th>SIDs</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var collection in Model.NtfsCollections)
+                        {
+                            <tr>
+                                <td>
+                                    <code class="small" title="@collection.InventoryId">@collection.InventoryId.ToString().Substring(0, 8)...</code>
+                                </td>
+                                <td>@(collection.ComputerName ?? "-")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(collection.ScanPath))
+                                    {
+                                        <span title="@collection.ScanPath">
+                                            @(collection.ScanPath.Length > 30 ? collection.ScanPath.Substring(0, 30) + "..." : collection.ScanPath)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (collection.CollectionDateTime.HasValue)
+                                    {
+                                        <span data-utc="@collection.CollectionDateTime.Value.ToString("o")" data-format="short">@collection.CollectionDateTime.Value.ToString("g")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>@collection.FoldersCount.ToString("N0")</td>
+                                <td>@collection.AclCount.ToString("N0")</td>
+                                <td>@collection.AceCount.ToString("N0")</td>
+                                <td>@collection.SidsCount.ToString("N0")</td>
+                                <td><strong>@collection.TotalRecords.ToString("N0")</strong></td>
+                                @{
+                                    var ntfsIsDeleting = activeDeletionIds.Contains(collection.InventoryId.ToString());
+                                }
+                                <td class="delete-cell" data-id="@collection.InventoryId">
+                                    <div class="delete-btn-container @(ntfsIsDeleting ? "d-none" : "")">
+                                        <form asp-action="DeleteNtfsCollection" asp-route-id="@collection.InventoryId"
+                                              method="post" style="display: inline;" class="delete-form"
+                                              data-confirm="WARNING: You are about to permanently delete this collection from PRODUCTION data.\n\nComputer: @(collection.ComputerName ?? "Unknown")\nPath: @(collection.ScanPath ?? "Unknown")\nRecords: @collection.TotalRecords.ToString("N0")\n\nThis action CANNOT be undone. Are you sure?">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger delete-btn" title="Delete from production">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="progress-container @(ntfsIsDeleting ? "" : "d-none")">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm text-danger me-2" role="status"></div>
+                                            <div class="progress flex-grow-1" style="height: 6px; min-width: 80px;">
+                                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+                                                     role="progressbar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                        <small class="progress-text text-muted" style="font-size: 0.7rem;">@(ntfsIsDeleting ? "Queued..." : "")</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-secondary">
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td><strong>@Model.NtfsCollections.Sum(c => c.FoldersCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.NtfsCollections.Sum(c => c.AclCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.NtfsCollections.Sum(c => c.AceCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.NtfsCollections.Sum(c => c.SidsCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.TotalNtfsRecords.ToString("N0")</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- AD Inventory Collections -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-people"></i> AD Inventory Collections
+        <span class="badge bg-info ms-2">ADData</span>
+    </div>
+    <div class="card-body">
+        @if (Model.AdCollections.Count == 0)
+        {
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> No AD Inventory collections in production.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Collection ID</th>
+                            <th>Domain</th>
+                            <th>Computer</th>
+                            <th>Collected</th>
+                            <th>Objects</th>
+                            <th>Group Members</th>
+                            <th>FSPs</th>
+                            <th>Trusts</th>
+                            <th>Flat Members</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var collection in Model.AdCollections)
+                        {
+                            <tr>
+                                <td><code>@collection.CollectionId</code></td>
+                                <td>@(collection.DomainName ?? "-")</td>
+                                <td>@(collection.ComputerName ?? "-")</td>
+                                <td>
+                                    @if (collection.CollectionDateTime.HasValue)
+                                    {
+                                        <span data-utc="@collection.CollectionDateTime.Value.ToString("o")" data-format="short">@collection.CollectionDateTime.Value.ToString("g")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>@collection.ObjectCount.ToString("N0")</td>
+                                <td>@collection.GroupMembershipCount.ToString("N0")</td>
+                                <td>@collection.FspCount.ToString("N0")</td>
+                                <td>@collection.TrustCount.ToString("N0")</td>
+                                <td>@collection.FlatMembershipCount.ToString("N0")</td>
+                                <td><strong>@collection.TotalRecords.ToString("N0")</strong></td>
+                                @{
+                                    // AD CollectionId is now a native GUID for SignalR tracking
+                                    var adProgressId = collection.CollectionId;
+                                    var adIsDeleting = activeDeletionIds.Contains(adProgressId.ToString());
+                                }
+                                <td class="delete-cell" data-id="@adProgressId">
+                                    <div class="delete-btn-container @(adIsDeleting ? "d-none" : "")">
+                                        <form asp-action="DeleteAdCollection" asp-route-id="@collection.CollectionId"
+                                              method="post" style="display: inline;" class="delete-form"
+                                              data-confirm="WARNING: You are about to permanently delete this collection from PRODUCTION data.\n\nDomain: @(collection.DomainName ?? "Unknown")\nCollection ID: @collection.CollectionId\nRecords: @collection.TotalRecords.ToString("N0")\n\nThis action CANNOT be undone. Are you sure?">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger delete-btn" title="Delete from production">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="progress-container @(adIsDeleting ? "" : "d-none")">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm text-danger me-2" role="status"></div>
+                                            <div class="progress flex-grow-1" style="height: 6px; min-width: 80px;">
+                                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+                                                     role="progressbar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                        <small class="progress-text text-muted" style="font-size: 0.7rem;">@(adIsDeleting ? "Queued..." : "")</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-secondary">
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td><strong>@Model.AdCollections.Sum(c => c.ObjectCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.AdCollections.Sum(c => c.GroupMembershipCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.AdCollections.Sum(c => c.FspCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.AdCollections.Sum(c => c.TrustCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.AdCollections.Sum(c => c.FlatMembershipCount).ToString("N0")</strong></td>
+                            <td><strong>@Model.TotalAdRecords.ToString("N0")</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all active deletion IDs from the model
+        var activeDeletionIds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(activeDeletionIds));
+
+        // If there are any active deletions, connect to SignalR
+        if (activeDeletionIds && activeDeletionIds.length > 0) {
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/upload')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('ProgressUpdate', function(data) {
+                console.log('Progress update:', data);
+
+                // Find the cell for this upload
+                var cell = document.querySelector('.delete-cell[data-id="' + data.uploadId + '"]');
+                if (!cell) return;
+
+                var progressContainer = cell.querySelector('.progress-container');
+                if (!progressContainer) return;
+
+                var progressBar = progressContainer.querySelector('.progress-bar');
+                var progressText = progressContainer.querySelector('.progress-text');
+                var spinner = progressContainer.querySelector('.spinner-border');
+
+                if (progressBar) {
+                    progressBar.style.width = data.percent + '%';
+                }
+
+                if (progressText) {
+                    var shortMsg = data.message;
+                    // Shorten message for inline display
+                    if (data.currentTable) {
+                        shortMsg = data.currentTable.split('.').pop() + ' ' + data.percent + '%';
+                    } else if (data.percent > 0) {
+                        shortMsg = data.percent + '%';
+                    }
+                    progressText.textContent = shortMsg;
+                }
+
+                if (data.phase === 'Completed') {
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped', 'bg-danger');
+                        progressBar.classList.add('bg-success');
+                    }
+                    if (spinner) spinner.classList.add('d-none');
+                    if (progressText) progressText.textContent = 'Done!';
+
+                    // Refresh the page after a short delay
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
+                } else if (data.phase === 'Failed') {
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    }
+                    if (spinner) spinner.classList.add('d-none');
+                    if (progressText) {
+                        progressText.classList.remove('text-muted');
+                        progressText.classList.add('text-danger');
+                        progressText.textContent = 'Failed';
+                    }
+                }
+            });
+
+            connection.start().then(function() {
+                console.log('SignalR connected, subscribing to', activeDeletionIds.length, 'active deletions');
+                // Subscribe to all active deletion IDs
+                activeDeletionIds.forEach(function(id) {
+                    connection.invoke('SubscribeToUpload', id);
+                });
+            }).catch(function(err) {
+                console.error('SignalR connection error:', err);
+            });
+        }
+
+        // Add event listeners to all delete forms
+        document.querySelectorAll('.delete-form').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var confirmMsg = form.getAttribute('data-confirm');
+                if (!confirm(confirmMsg)) {
+                    return false;
+                }
+
+                var btn = form.querySelector('.delete-btn');
+                var cell = form.closest('.delete-cell');
+
+                // Show inline spinner on the button
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+                // Submit the form
+                form.submit();
+            });
+        });
+    });
+</script>
+}
