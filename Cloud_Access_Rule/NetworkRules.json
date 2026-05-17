@@ -1,0 +1,31 @@
+{
+  "rules": [
+    {
+      "name": "Terminal Licenses to zone-10.225.20.68 135",
+      "source": "zone-10.225.20.68",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+    {
+      "name": "Terminal Licenses to 10.222.33.0/23 135",
+      "source": "securitygroup-0e69d6c1-0b7c-487e-b66c-5a327730762c",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+    {
+      "name": "Terminal Licenses to 10.222 and 10.234 135",
+      "source": "securitygroup-fb8b7f8b-e0f0-46ae-afdb-25268e2e8cda",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    }
+  ]
+}
