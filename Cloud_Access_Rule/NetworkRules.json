@@ -1,8 +1,134 @@
 {
   "rules": [
     {
-      "name": "Terminal Licenses to zone-10.225.20.68 135",
-      "source": "zone-10.225.20.68",
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-ab0fc8f8-627f-4d52-8e2c-7d87979ace5d",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+    {
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-5f07f8f9-6c1c-47b8-8b2b-2c05dc713a0e",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+    {
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-61025746-f3af-4eaa-afa6-0818baca79a6",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "citrix_prom_exporters",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "tier-4c40757b-7bf4-4f8a-ba77-1adc4a4da1b6",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-12b5641d-96fc-4806-9592-599c17d6d35d",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-a7bf4b40-c22f-40d1-b630-7e6c09f5eac6",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "tier-b79e0b44-e79b-4674-96e2-caa7e9b37385",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "tier-71b9b48a-025f-4ecb-89dd-63f1c747cee1",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "tier-f81213e0-e4c4-4a1b-92f1-653b861b476a",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "tier-6bf9de74-6137-4886-8f0e-4aa25e762c97",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "tier-1677a486-cc3b-4477-8fe9-e4fe8628035c",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-225d4eda-7ca9-41dc-bb49-8fff762e7902",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 49152-65535",
+      "source": "securitygroup-c1e90f41-eee3-4c0a-8732-89037c5964ea",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "49152-65535",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-ab0fc8f8-627f-4d52-8e2c-7d87979ace5d",
       "sourceTenant": "ssnc",
       "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
       "destinationTenant": "ssnc",
@@ -10,8 +136,8 @@
       "protocol": "tcp"
     },
     {
-      "name": "Terminal Licenses to 10.222.33.0/23 135",
-      "source": "securitygroup-0e69d6c1-0b7c-487e-b66c-5a327730762c",
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-5f07f8f9-6c1c-47b8-8b2b-2c05dc713a0e",
       "sourceTenant": "ssnc",
       "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
       "destinationTenant": "ssnc",
@@ -19,8 +145,107 @@
       "protocol": "tcp"
     },
     {
-      "name": "Terminal Licenses to 10.222 and 10.234 135",
-      "source": "securitygroup-fb8b7f8b-e0f0-46ae-afdb-25268e2e8cda",
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-61025746-f3af-4eaa-afa6-0818baca79a6",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "citrix_prom_exporters",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "tier-4c40757b-7bf4-4f8a-ba77-1adc4a4da1b6",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-12b5641d-96fc-4806-9592-599c17d6d35d",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-a7bf4b40-c22f-40d1-b630-7e6c09f5eac6",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "tier-b79e0b44-e79b-4674-96e2-caa7e9b37385",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "tier-71b9b48a-025f-4ecb-89dd-63f1c747cee1",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "tier-f81213e0-e4c4-4a1b-92f1-653b861b476a",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "tier-6bf9de74-6137-4886-8f0e-4aa25e762c97",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "tier-1677a486-cc3b-4477-8fe9-e4fe8628035c",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-225d4eda-7ca9-41dc-bb49-8fff762e7902",
+      "sourceTenant": "ssnc",
+      "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
+      "destinationTenant": "ssnc",
+      "ports": "135",
+      "protocol": "tcp"
+    },
+	{
+      "name": "Terminal Licenses for SPLA Domain 135",
+      "source": "securitygroup-c1e90f41-eee3-4c0a-8732-89037c5964ea",
       "sourceTenant": "ssnc",
       "destination": "securitygroup-42d6b617-3793-4146-8895-3a3e8518f39a",
       "destinationTenant": "ssnc",

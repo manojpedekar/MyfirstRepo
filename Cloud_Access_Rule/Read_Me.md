@@ -1,8 +1,10 @@
 Go to the file path of tha funtion file and run below command
 
-`. .\Function.ps1`
+
 
 `$env:SSNC_API_KEY = "your-api-key"`
+
+`. .\Function.ps1`
 
 `New-NetAccessBatch -JsonPath "C:\path\to\NetworkRules.json"`
 
