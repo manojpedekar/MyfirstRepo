@@ -20,201 +20,203 @@ param(
     [int]$TimeoutMs = 2000,
 
     [Parameter(Mandatory=$false)]
-    [string]$OutputPath = "$env:USERPROFILE\Desktop\Port_Connectivity_Results.csv",
+    [string]$OutputPath = "E:\Manoj\rds\Port135_Results.csv",
 
     [Parameter(Mandatory=$false)]
-    [switch]$SkipCredentialCheck,
+    [string]$CsvColumn = "",
 
-    # NOTE: Cannot use -Verbose as it is a reserved PowerShell common parameter
     [Parameter(Mandatory=$false)]
-    [switch]$ShowDetail
+    [switch]$SkipCredentialCheck
 )
 
-# --- Validate input ---
-if ([string]::IsNullOrWhiteSpace($TargetServer)) {
-    Write-Error "TargetServer cannot be empty."
-    exit 1
-}
-
-try {
-    $targetResolved = [System.Net.Dns]::GetHostAddresses($TargetServer) | Select-Object -First 1
-    if ($ShowDetail) { Write-Host "Target resolved to: $($targetResolved.IPAddressToString)" -ForegroundColor Gray }
-} catch {
-    Write-Warning "Could not resolve '$TargetServer'. Will attempt to connect anyway."
-}
-
-# --- Prompt for credentials ONCE ---
-Write-Host "`nEnter admin credentials for the source servers..." -ForegroundColor Cyan
-$Cred = Get-Credential
-
-if ($null -eq $Cred) {
-    Write-Error "Credentials are required to proceed."
-    exit 1
-}
-
-# --- Load server list ---
+# -------------------------------------------------------
+# STEP 1 — Load server list
+# -------------------------------------------------------
 if (-not (Test-Path $ServerListPath)) {
     Write-Error "Server list file not found: $ServerListPath"
     exit 1
 }
 
-$Extension = [System.IO.Path]::GetExtension($ServerListPath).ToLower()
+$Extension     = [System.IO.Path]::GetExtension($ServerListPath).ToLower()
+$SourceServers = @()
 
 if ($Extension -eq ".csv") {
     $CsvData = Import-Csv -Path $ServerListPath
-    $ColName = ($CsvData | Get-Member -MemberType NoteProperty).Name |
-        Where-Object { $_ -match '^(hostname|server|name|computername|ip|address)$' } |
-        Select-Object -First 1
-    if (-not $ColName) {
-        $ColName = ($CsvData | Get-Member -MemberType NoteProperty).Name | Select-Object -First 1
+
+    # Determine which column to use
+    $AllColumns = ($CsvData | Get-Member -MemberType NoteProperty).Name
+
+    if ($CsvColumn -ne "" -and $AllColumns -contains $CsvColumn) {
+        $ColName = $CsvColumn
+    } else {
+        # Auto-detect: prefer FQDN-looking values first
+        $ColName = $null
+        foreach ($col in $AllColumns) {
+            $sample = $CsvData | Select-Object -First 10 | ForEach-Object { $_.$col }
+            $fqdnCount = ($sample | Where-Object { $_ -match '\.' -and $_ -match '[a-zA-Z]' }).Count
+            if ($fqdnCount -ge 1) {
+                $ColName = $col
+                break
+            }
+        }
+        # Fallback: use first column
+        if (-not $ColName) {
+            $ColName = $AllColumns | Select-Object -First 1
+        }
     }
-    Write-Host "Using CSV column: $ColName"
-    $SourceServers = $CsvData.$ColName | Where-Object { $_.Trim() -ne '' }
+
+    Write-Host "Using CSV column : '$ColName'" -ForegroundColor Cyan
+    $SourceServers = $CsvData | ForEach-Object { $_.$ColName.Trim() } | Where-Object { $_ -ne '' }
+
 } else {
-    $SourceServers = Get-Content -Path $ServerListPath | Where-Object { $_.Trim() -ne '' }
+    # Plain TXT — one server per line
+    $SourceServers = Get-Content -Path $ServerListPath |
+                     ForEach-Object { $_.Trim() } |
+                     Where-Object { $_ -ne '' }
 }
 
-if ($SourceServers.Count -eq 0) {
-    Write-Error "No servers found in the file. Check the path or column name."
+# -------------------------------------------------------
+# STEP 2 — Deduplicate (case-insensitive)
+# -------------------------------------------------------
+$SourceServers = $SourceServers | Sort-Object -Unique
+if ($SourceServers -is [string]) { $SourceServers = @($SourceServers) }
+
+Write-Host "Servers loaded    : $($SourceServers.Count)" -ForegroundColor Cyan
+Write-Host "Target            : $TargetServer : $Port"
+Write-Host "Timeout           : ${TimeoutMs}ms`n"
+
+# -------------------------------------------------------
+# STEP 3 — Credentials
+# -------------------------------------------------------
+Write-Host "Enter admin credentials for the source servers..." -ForegroundColor Cyan
+$Cred = Get-Credential
+if ($null -eq $Cred) {
+    Write-Error "Credentials are required."
     exit 1
 }
 
-# --- Remove duplicates ---
-$OriginalCount = $SourceServers.Count
-$SourceServers = $SourceServers | Select-Object -Unique
-if ($SourceServers.Count -lt $OriginalCount) {
-    Write-Host "Removed $($OriginalCount - $SourceServers.Count) duplicate(s)." -ForegroundColor Gray
-}
-
-# Ensure always treated as array
-if ($SourceServers -is [string]) { $SourceServers = @($SourceServers) }
-
-Write-Host "`nLoaded $($SourceServers.Count) server(s) from file."
-Write-Host "Target : $TargetServer : $Port"
-Write-Host "Timeout: ${TimeoutMs}ms`n"
-
-# --- Pre-flight credential check on first server ---
+# -------------------------------------------------------
+# STEP 4 — Optional credential pre-flight check
+# -------------------------------------------------------
 if (-not $SkipCredentialCheck) {
-    Write-Host "Testing credentials on $($SourceServers[0])..." -ForegroundColor Cyan
+    Write-Host "`nTesting credentials on $($SourceServers[0])..." -ForegroundColor Cyan
     try {
         Invoke-Command -ComputerName $SourceServers[0] -Credential $Cred `
                        -ScriptBlock { "OK" } -ErrorAction Stop | Out-Null
         Write-Host "Credential check passed.`n" -ForegroundColor Green
     } catch {
         Write-Error "Credential check failed on $($SourceServers[0]): $_"
-        Write-Host "Tip: Use -SkipCredentialCheck to bypass this check." -ForegroundColor Yellow
+        Write-Host "Tip: Use -SkipCredentialCheck to bypass." -ForegroundColor Yellow
         exit 1
     }
 }
 
-# --- Run TCP 135 test remotely on each server ---
-Write-Host "Running port $Port test on $($SourceServers.Count) server(s)..." -ForegroundColor Cyan
-Write-Host ""
+# -------------------------------------------------------
+# STEP 5 — Run TCP test ONE SERVER AT A TIME
+#           This avoids Invoke-Command returning both a
+#           short-name result AND an FQDN/remoting-failed
+#           result for the same machine (the duplication bug)
+# -------------------------------------------------------
+Write-Host "Testing port $Port on $($SourceServers.Count) server(s)...`n" -ForegroundColor Cyan
 
-$Results  = @()
-$ErrorLog = @()
-$i        = 0
+$AllResults = @()
+$i = 0
 
 foreach ($server in $SourceServers) {
     $i++
-    Write-Progress -Activity "Testing Port $Port Connectivity" `
-                   -Status "[$i/$($SourceServers.Count)] $server" `
+    Write-Progress -Activity "Port $Port Connectivity Test" `
+                   -Status "[$i / $($SourceServers.Count)] $server" `
                    -PercentComplete (($i / $SourceServers.Count) * 100)
 
-    if ($ShowDetail) { Write-Host "  -> Testing $server..." -ForegroundColor Gray }
+    $remoteError  = $null
+    $invokeResult = $null
 
-    $remoteError  = @()
-    $invokeResult = Invoke-Command -ComputerName $server `
-                                   -Credential $Cred `
-                                   -ErrorAction SilentlyContinue `
-                                   -ErrorVariable remoteError `
-                                   -ScriptBlock {
-        param($Target, $Port, $TimeoutMs)
+    try {
+        $invokeResult = Invoke-Command -ComputerName $server `
+                                       -Credential $Cred `
+                                       -ErrorAction Stop `
+                                       -ScriptBlock {
+            param($Target, $Port, $TimeoutMs, $OriginalEntry)
 
-        $tc = New-Object System.Net.Sockets.TcpClient
-        try {
-            $connect = $tc.BeginConnect($Target, $Port, $null, $null)
-            $wait    = $connect.AsyncWaitHandle.WaitOne($TimeoutMs, $false)
-            if ($wait -and -not $tc.Client.Connected) { $wait = $false }
-            $tc.Close()
-            $status = if ($wait) { "SUCCESS" } else { "FAILED" }
-        } catch {
-            $status = "FAILED"
-        }
-
-        [PSCustomObject]@{
-            SourceServer = $env:COMPUTERNAME
-            SourceIP     = (
+            $sourceIP = (
                 [System.Net.Dns]::GetHostAddresses($env:COMPUTERNAME) |
                 Where-Object { $_.AddressFamily -eq 'InterNetwork' } |
                 Select-Object -First 1
             ).IPAddressToString
-            TargetServer = $Target
-            Port         = $Port
-            Status       = $status
-            Timestamp    = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-            ErrorDetails = $null
-        }
-    } -ArgumentList $TargetServer, $Port, $TimeoutMs
 
-    if ($invokeResult) {
-        $Results += $invokeResult
-    }
+            $tc = New-Object System.Net.Sockets.TcpClient
+            try {
+                $connect = $tc.BeginConnect($Target, $Port, $null, $null)
+                $wait    = $connect.AsyncWaitHandle.WaitOne($TimeoutMs, $false)
+                if ($wait -and -not $tc.Client.Connected) { $wait = $false }
+                $tc.Close()
+                $status = if ($wait) { "SUCCESS" } else { "FAILED" }
+            } catch {
+                $status = "FAILED"
+            }
 
-    if ($remoteError.Count -gt 0) {
-        foreach ($err in $remoteError) {
-            $ErrorLog += "[ERROR] $server : $($err.Exception.Message)"
-        }
-    }
-}
+            [PSCustomObject]@{
+                SourceEntry  = $OriginalEntry        # exactly as provided in your list
+                SourceServer = $env:COMPUTERNAME     # actual hostname from the machine
+                SourceIP     = $sourceIP
+                TargetServer = $Target
+                Port         = $Port
+                Status       = $status
+                ErrorDetails = $null
+                Timestamp    = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+            }
+        } -ArgumentList $TargetServer, $Port, $TimeoutMs, $server
 
-Write-Progress -Activity "Testing Port $Port Connectivity" -Completed
-
-# --- Catch servers PS Remoting could not reach ---
-$ReachedServers      = $Results.SourceServer
-$UnreachableResults  = foreach ($s in $SourceServers) {
-    if ($s -notin $ReachedServers) {
-        $ErrorLog += "[UNREACHABLE] $s : PowerShell remoting connection failed"
-        [PSCustomObject]@{
-            SourceServer = $s
-            SourceIP     = $s
+    } catch {
+        # PS Remoting could not connect
+        $invokeResult = [PSCustomObject]@{
+            SourceEntry  = $server
+            SourceServer = $server
+            SourceIP     = $server
             TargetServer = $TargetServer
             Port         = $Port
             Status       = "REMOTING_FAILED"
+            ErrorDetails = $_.Exception.Message
             Timestamp    = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-            ErrorDetails = "PowerShell remoting connection failed"
         }
     }
-}
 
-$AllResults = @($Results) + @($UnreachableResults)
+    # Always exactly ONE result per server — no duplicates possible
+    $AllResults += $invokeResult
 
-# --- Console output ---
-Write-Host "`n--- Results ---"
-$AllResults | ForEach-Object {
-    $color = switch ($_.Status) {
+    # Live console line per server
+    $color = switch ($invokeResult.Status) {
         "SUCCESS"         { "Green"  }
         "FAILED"          { "Red"    }
         "REMOTING_FAILED" { "Yellow" }
     }
-    Write-Host "$($_.SourceIP.PadRight(20)) -> $TargetServer : $Port  [$($_.Status)]" -ForegroundColor $color
+    Write-Host "$($invokeResult.SourceEntry.PadRight(55)) -> $TargetServer : $Port  [$($invokeResult.Status)]" -ForegroundColor $color
 }
 
+Write-Progress -Activity "Port $Port Connectivity Test" -Completed
+
+# -------------------------------------------------------
+# STEP 6 — Summary
+# -------------------------------------------------------
 Write-Host "`n--- Summary ---"
-Write-Host "SUCCESS        : $(($AllResults | Where-Object Status -eq 'SUCCESS').Count)" -ForegroundColor Green
-Write-Host "FAILED         : $(($AllResults | Where-Object Status -eq 'FAILED').Count)"  -ForegroundColor Red
+Write-Host "Total tested   : $($AllResults.Count)"
+Write-Host "SUCCESS        : $(($AllResults | Where-Object Status -eq 'SUCCESS').Count)"        -ForegroundColor Green
+Write-Host "FAILED         : $(($AllResults | Where-Object Status -eq 'FAILED').Count)"         -ForegroundColor Red
 Write-Host "REMOTING_FAILED: $(($AllResults | Where-Object Status -eq 'REMOTING_FAILED').Count)" -ForegroundColor Yellow
 
-# --- Export results CSV ---
-$AllResults | Select-Object SourceServer, SourceIP, TargetServer, Port, Status, Timestamp, ErrorDetails |
+# -------------------------------------------------------
+# STEP 7 — Export CSV (clean columns, no PS internal cols)
+# -------------------------------------------------------
+$AllResults |
+    Select-Object SourceEntry, SourceServer, SourceIP, TargetServer, Port, Status, ErrorDetails, Timestamp |
     Export-Csv -Path $OutputPath -NoTypeInformation
+
 Write-Host "`nResults saved to: $OutputPath" -ForegroundColor Green
 
-# --- Export error log if any errors ---
-if ($ErrorLog.Count -gt 0) {
-    $ErrorLogPath = $OutputPath -replace '\.csv$', '_ErrorLog.txt'
-    $ErrorLog | Out-File -FilePath $ErrorLogPath -Encoding UTF8
-    Write-Host "Error log saved to: $ErrorLogPath" -ForegroundColor Yellow
-}
+# Export separate list of FAILED servers for easy follow-up
+$FailedPath = $OutputPath -replace '\.csv$', '_FAILED_Only.csv'
+$AllResults | Where-Object { $_.Status -ne 'SUCCESS' } |
+    Select-Object SourceEntry, SourceServer, SourceIP, TargetServer, Port, Status, ErrorDetails, Timestamp |
+    Export-Csv -Path $FailedPath -NoTypeInformation
 
-Write-Host ""
+Write-Host "Failed-only list: $FailedPath`n" -ForegroundColor Yellow
