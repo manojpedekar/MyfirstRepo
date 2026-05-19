@@ -29,6 +29,9 @@ param(
     [switch]$SkipCredentialCheck
 )
 
+#Example usage:
+.\Port_Query_from_servers_directly.ps1 -TargetServer "License server's IP" -ServerListPath "E:\Manoj\servers.csv"
+
 # -------------------------------------------------------
 # STEP 1 — Load server list
 # -------------------------------------------------------
