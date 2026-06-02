@@ -1,0 +1,94 @@
+{
+  "instances": [
+    {
+      "name": "Web Server Instance 1",
+      "subprojectId": "subproject-00000000-0000-0000-0000-0000000000001",
+      "deploymentZoneId": "deploymentzone-00000000-0000-0000-0000-0000000000001",
+      "cpu": 4,
+      "memory": 16,
+      "imageId": "image-00000000-0000-0000-0000-0000000000001",
+      "securityGroupIds": [
+        "securitygroup-web-00000000-0000-0000-0000-0000000000001"
+      ],
+      "backupPolicy": "daily",
+      "patchingGroup": "3rd-sat-10pm-5am",
+      "workloadType": "CLOUD_DEFAULT",
+      "tags": [
+        {
+          "name": "Environment",
+          "value": "Production"
+        },
+        {
+          "name": "Team",
+          "value": "DevOps"
+        }
+      ]
+    },
+    {
+      "name": "Database Server Instance 1",
+      "subprojectId": "subproject-00000000-0000-0000-0000-0000000000002",
+      "deploymentZoneId": "deploymentzone-00000000-0000-0000-0000-0000000000002",
+      "cpu": 8,
+      "memory": 32,
+      "imageId": "image-00000000-0000-0000-0000-0000000000002",
+      "databaseType": "mysql",
+      "securityGroupIds": [
+        "securitygroup-db-00000000-0000-0000-0000-0000000000001"
+      ],
+      "backupPolicy": "daily",
+      "patchingGroup": "3rd-sat-10pm-5am",
+      "createVolumes": [
+        {
+          "name": "data-volume",
+          "size": 100
+        },
+        {
+          "name": "logs-volume",
+          "size": 50
+        }
+      ],
+      "markAsEnterpriseDatabase": true,
+      "tags": [
+        {
+          "name": "Environment",
+          "value": "Production"
+        },
+        {
+          "name": "Service",
+          "value": "MySQL"
+        }
+      ]
+    },
+    {
+      "name": "App Server Instance 1",
+      "subprojectId": "subproject-00000000-0000-0000-0000-0000000000003",
+      "deploymentZoneId": "deploymentzone-00000000-0000-0000-0000-0000000000003",
+      "cpu": 6,
+      "memory": 24,
+      "imageId": "image-00000000-0000-0000-0000-0000000000003",
+      "securityGroupIds": [
+        "securitygroup-app-00000000-0000-0000-0000-0000000000001"
+      ],
+      "backupPolicy": "daily",
+      "backupPolicy": "weekly",
+      "patchingGroup": "3rd-sat-10pm-5am",
+      "domainDelegation": "cloudad.ssncad.global",
+      "createVolumes": [
+        {
+          "name": "app-data",
+          "size": 75
+        }
+      ],
+      "tags": [
+        {
+          "name": "Environment",
+          "value": "Production"
+        },
+        {
+          "name": "Application",
+          "value": "MainApp"
+        }
+      ]
+    }
+  ]
+}
