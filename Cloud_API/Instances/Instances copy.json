@@ -1,14 +1,14 @@
 {
   "instances": [
     {
-      "name": "Web Server Instance 1",
-      "subprojectId": "subproject-00000000-0000-0000-0000-0000000000001",
+      "name": "KAOIFDSRDSLIC0001",
+      "subprojectId": "subproject-b513bf73-b712-4444-bdbf-2419773a7d07",
       "deploymentZoneId": "deploymentzone-00000000-0000-0000-0000-0000000000001",
-      "cpu": 4,
-      "memory": 16,
-      "imageId": "image-00000000-0000-0000-0000-0000000000001",
+      "cpu": 2,
+      "memory": 4,
+      "imageId": "ssnc-cloud-w2k25-base",
       "securityGroupIds": [
-        "securitygroup-web-00000000-0000-0000-0000-0000000000001"
+        "securitygroup-2686aa1f-513b-4743-9e71-91e5645b8f63"
       ],
       "backupPolicy": "daily",
       "patchingGroup": "3rd-sat-10pm-5am",

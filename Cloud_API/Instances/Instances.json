@@ -1,0 +1,18 @@
+{
+  "instances": [
+    {
+      "name": "KAOIFDSRDSLIC0001",
+      "subprojectId": "subproject-b513bf73-b712-4444-bdbf-2419773a7d07",
+      "deploymentZoneId": "deploymentzone-uk-east-lon",
+      "cpu": 2,
+      "memory": 4,
+      "imageId": "ssnc-cloud-w2k25-base",
+      "securityGroupIds": [
+        "securitygroup-2686aa1f-513b-4743-9e71-91e5645b8f63"
+      ],
+      "patchingGroup": "3rd-sat-10pm-5am",
+      "workloadType": "CLOUD_DEFAULT",
+      
+    }
+  ]
+}
