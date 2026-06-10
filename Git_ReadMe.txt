@@ -39,6 +39,7 @@
  git branch -a (to see all branches)
  git switch -c mpedekar_dev  (create and switch to new branch. If branch already exists then it will switch to that branch using -c)
  git switch mpedekar_dev
+ git merge main
  git push -u origin mpedekar_dev  - -u means set upstream tracking. It tells Git: This local branch should track origin/my_work_branch.”
 
  After doing this once, Git remembers the connection.
