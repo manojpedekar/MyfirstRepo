@@ -1,30 +1,33 @@
-# Before running, update the $HomeDirsPath and $Domain variables below to match your environment.
+# Before running, update the $HomeDirsPath, $Domain and $ReportPath variables below to match your environment.
+#
+# Builds a CSV report of every home-directory folder with its AD account status,
+# folder size, and most recent file activity - useful for departed-user cleanup decisions.
 
 Function Test-ADUserExists {
 <#
 	.SYNOPSIS
 		Tests if a user account exists in Active Directory and checks its status.
-	
+
 	.DESCRIPTION
 		This function checks for the existence of a user account in Active Directory and
 		returns its status as either 'Enabled', 'Disabled', 'Missing' or 'ConnectionError'.
 		It can search in the current domain or in a specified domain.
-	
+
 	.PARAMETER UserName
 		The username of the user account to check. This parameter is mandatory.
-	
+
 	.PARAMETER DomainName
 		The domain in which to search for the user account. If not specified, the function
 		searches in the current domain. This parameter is optional.
-	
+
 	.EXAMPLE
 		Test-ADUserExists -UserName "dt234083"
 		Checks if the user 'dt234083' exists in the current domain and returns the account status.
-	
+
 	.EXAMPLE
 		Test-ADUserExists -UserName "dt234083" -DomainName "ssnc-corp.global"
 		Checks if the user 'dt234083' exists in the 'ssnc-corp.global' domain and returns the account status.
-	
+
 	.NOTES
 		Requires access to System.DirectoryServices namespace.
 #>
@@ -37,7 +40,7 @@ Function Test-ADUserExists {
 		[Parameter(Mandatory = $false)]
 		[string]$DomainName
 	)
-	
+
 	$root = $null
 	$searcher = $null
 	Try {
@@ -132,12 +135,25 @@ $Report = Foreach ($Dir in $Dirs) {
 		}
 	}
 
+	# Measure folder contents: total size and most recent file activity.
+	# Folder timestamps don't change when nested files do, so use the newest file.
+	$Files = Get-ChildItem -LiteralPath $Dir.FullName -File -Recurse -Force -ErrorAction SilentlyContinue
+	If ($Files) {
+		$SizeMB       = [math]::Round(($Files | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+		$LastModified = ($Files | Measure-Object -Property LastWriteTime -Maximum).Maximum
+	} Else {
+		$SizeMB       = 0
+		$LastModified = $Dir.LastWriteTime
+	}
+
 	# Emit one record per folder for the CSV report
 	[PSCustomObject]@{
-		UserID     = $Dir.BaseName
-		Status     = $Status
-		Note       = $Note
-		FolderPath = $Dir.FullName
+		UserID       = $Dir.BaseName
+		Status       = $Status
+		Note         = $Note
+		SizeMB       = $SizeMB
+		LastModified = $LastModified
+		FolderPath   = $Dir.FullName
 	}
 
 }
