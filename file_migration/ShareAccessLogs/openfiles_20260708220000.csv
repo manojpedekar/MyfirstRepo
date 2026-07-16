@@ -1,0 +1,29 @@
+
+INFO: The system global flag 'maintain objects list' needs
+      to be enabled to see local opened files.
+      See Openfiles /? for more information.
+
+
+Files opened remotely via local share points:
+---------------------------------------------
+"Hostname","ID","Accessed By","Type","#Locks","Open Mode","Open File (Path\executable)"
+"WINDT142K3","6","N/A","Windows","0","Write + Read","\PIPE\EVENTLOG"
+"WINDT142K3","68387441","DBETTERS","Windows","0","Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\GL Recon\GL Recon Reports\MCI_MPC"
+"WINDT142K3","68390899","MPARLAPI","Windows","0","Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Controls"
+"WINDT142K3","68390901","MPARLAPI","Windows","0","Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Controls"
+"WINDT142K3","68390903","MPARLAPI","Windows","0","Read","G:\Group_Windt132k"
+"WINDT142K3","68390904","MPARLAPI","Windows","0","Read","G:\Group_Windt132k"
+"WINDT142K3","68391300","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\GL Recon\MCI_MPC GL Recon GAAP 06.30.26.xlsm"
+"WINDT142K3","68391312","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\GL Recon\~$MCI_MPC GL Recon GAAP 06.30.26.xlsm"
+"WINDT142K3","68391745","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\4.30.2026\Work_Month End\GL Recon"
+"WINDT142K3","68391747","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\4.30.2026\Work_Month End\GL Recon"
+"WINDT142K3","68392160","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\MLC Reports\Gaap_MCI_MPC\~$Macro for File name change_Gaap MCIMPC.xlsm"
+"WINDT142K3","68392251","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Work (Month End)\GL Recon"
+"WINDT142K3","68392254","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Work (Month End)\GL Recon"
+"WINDT142K3","68392301","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\MLC Reports\Gaap_MCI_MPC\Macro for File name change_Gaap MCIMPC.xlsm"
+"WINDT142K3","68393306","RKUMAR3","Windows","0","Write + Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Work (Month End)\GL Recon\~$ANICO Options PGAAP Recon 6.30.26 Includes Reports - Work_RK.xlsx"
+"WINDT142K3","68393640","RKUMAR3","Windows","0","Write + Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Work (Month End)\GL Recon\ANICO Options PGAAP Recon 6.30.26 Includes Reports - Work_RK.xlsx"
+"WINDT142K3","68395978","DBETTERS","Windows","0","Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\MLC Reports\Gaap_MCMI"
+"WINDT142K3","68395979","DBETTERS","Windows","0","Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\MLC Reports\Gaap_MCMI"
+"WINDT142K3","68395999","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\MLC Reports\Gaap_MCMI\Macro for File name change_Gaap MCMI.xlsm"
+"WINDT142K3","68396015","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\MarylandCare\2026.06.30\Work\MLC Reports\Gaap_MCMI\~$Macro for File name change_Gaap MCMI.xlsm"

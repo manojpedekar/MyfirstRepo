@@ -1,0 +1,16 @@
+
+INFO: The system global flag 'maintain objects list' needs
+      to be enabled to see local opened files.
+      See Openfiles /? for more information.
+
+
+Files opened remotely via local share points:
+---------------------------------------------
+"Hostname","ID","Accessed By","Type","#Locks","Open Mode","Open File (Path\executable)"
+"WINDT142K3","6","N/A","Windows","0","Write + Read","\PIPE\EVENTLOG"
+"WINDT142K3","68457471","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Work (Month End)\GL Recon"
+"WINDT142K3","68457472","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Work (Month End)\GL Recon"
+"WINDT142K3","68459803","MMCMANUS","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\U"
+"WINDT142K3","68459804","MMCMANUS","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\U"
+"WINDT142K3","68460272","RFREYTAG","Windows","0","Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026\Recon"
+"WINDT142K3","68460274","RFREYTAG","Windows","0","Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026\Recon"

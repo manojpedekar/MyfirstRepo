@@ -1,0 +1,49 @@
+param(
+    [string]$ShareName = 'YourShare',
+    [int]$LookbackDays = 7,
+    [string]$OutCsv = 'C:\ShareAudit\5140_rollup.csv'
+)
+
+$events = Get-WinEvent -FilterHashtable @{
+    LogName   = 'Security'
+    Id        = 5140
+    StartTime = (Get-Date).AddDays(-$LookbackDays)
+} -ErrorAction SilentlyContinue
+
+$dnsCache = @{}
+function Resolve-Name([string]$ip) {
+    if ($dnsCache.ContainsKey($ip)) { return $dnsCache[$ip] }
+    try   { $n = [System.Net.Dns]::GetHostEntry($ip).HostName }
+    catch { $n = $ip }
+    $dnsCache[$ip] = $n; $n
+}
+
+$rows = foreach ($e in $events) {
+    $x = [xml]$e.ToXml()
+    $d = @{}
+    foreach ($f in $x.Event.EventData.Data) { $d[$f.Name] = $f.'#text' }
+    if ($d['ShareName'] -notlike "*$ShareName*") { continue }
+    [pscustomobject]@{
+        Time     = $e.TimeCreated
+        User     = "$($d['SubjectDomainName'])\$($d['SubjectUserName'])"
+        SourceIP = $d['IpAddress']
+        Client   = Resolve-Name $d['IpAddress']
+        Share    = $d['ShareName']
+    }
+}
+
+$rows | Group-Object Client, User | ForEach-Object {
+    $s = $_.Group
+    [pscustomobject]@{
+        Client       = $s[0].Client
+        SourceIP     = $s[0].SourceIP
+        User         = $s[0].User
+        Share        = $s[0].Share
+        ConnectCount = $_.Count
+        FirstSeen    = ($s | Measure-Object Time -Minimum).Minimum
+        LastSeen     = ($s | Measure-Object Time -Maximum).Maximum
+    }
+} | Sort-Object ConnectCount -Descending |
+    Tee-Object -Variable summary | Format-Table -AutoSize
+
+$summary | Export-Csv $OutCsv -NoTypeInformation

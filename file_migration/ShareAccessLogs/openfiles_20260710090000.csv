@@ -1,0 +1,39 @@
+
+INFO: The system global flag 'maintain objects list' needs
+      to be enabled to see local opened files.
+      See Openfiles /? for more information.
+
+
+Files opened remotely via local share points:
+---------------------------------------------
+"Hostname","ID","Accessed By","Type","#Locks","Open Mode","Open File (Path\executable)"
+"WINDT142K3","6","N/A","Windows","0","Write + Read","\PIPE\EVENTLOG"
+"WINDT142K3","68465201","MMCMANUS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\PastDues.xlsx"
+"WINDT142K3","68465204","MMCMANUS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\~$PastDues.xlsx"
+"WINDT142K3","68465567","JCACCAVA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\SGCAP MoO_SMA_LoanLevel 6.30.26 working.xlsx"
+"WINDT142K3","68465573","JCACCAVA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\~$SGCAP MoO_SMA_LoanLevel 6.30.26 working.xlsx"
+"WINDT142K3","68465691","JCACCAVA","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM"
+"WINDT142K3","68465693","JCACCAVA","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM"
+"WINDT142K3","68465883","JCACCAVA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\~$SGCAP Final PnL and Recon Endeavor 6.30.2026 Working.xlsx"
+"WINDT142K3","68466063","JCACCAVA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\SGCAP Final PnL and Recon Endeavor 6.30.2026 Working.xlsx"
+"WINDT142K3","68466138","KZIADIE","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\25067NFB Swansey Lots\Loan Docs\Swansey Lots - RE Note.pdf"
+"WINDT142K3","68466156","KZIADIE","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\25067NFB Swansey Lots\Loan Docs\Swansey Lots - Loan Agreement.pdf"
+"WINDT142K3","68466206","KZIADIE","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\25067NFB Swansey Lots\Swansey Lots - New Loan Onboarding Checklist.xlsx"
+"WINDT142K3","68466209","KZIADIE","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\25067NFB Swansey Lots\~$Swansey Lots - New Loan Onboarding Checklist.xlsx"
+"WINDT142K3","68466670","MMCMANUS","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM"
+"WINDT142K3","68466673","MMCMANUS","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM"
+"WINDT142K3","68466718","KZIADIE","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\25067NFB Swansey Lots\Payoff Request\~$Swansey Lots_Peachtree Payoff Cal_07.30.2026.xlsx"
+"WINDT142K3","68466752","KZIADIE","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\25067NFB Swansey Lots\Payoff Request\Swansey Lots_Peachtree Payoff Cal_07.30.2026.xlsx"
+"WINDT142K3","68466817","MMCMANUS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\SGCAP Final PnL and Recon 6.30.2026 U Fund Working.xlsx"
+"WINDT142K3","68466834","MMCMANUS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\MoO\06.30.26\EOM\~$SGCAP Final PnL and Recon 6.30.2026 U Fund Working.xlsx"
+"WINDT142K3","68467196","KZIADIE","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\Billing Statements\2026\07 Jul 2026"
+"WINDT142K3","68467197","KZIADIE","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\Billing Statements\2026\07 Jul 2026"
+"WINDT142K3","68467220","KZIADIE","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\Peachtree\Non Fund (NF) - Loans in PDOF\Billing Statements\2026\07 Jul 2026\Swansey Lots - Peachtree Invoice (2026 07).pdf"
+"WINDT142K3","68467322","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Sent to ANICO"
+"WINDT142K3","68467323","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO\Derivatives CLewis\6.30.2026\Sent to ANICO"
+"WINDT142K3","68467427","JCACCAVA","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\G1001\06.30.26\EOM"
+"WINDT142K3","68467428","JCACCAVA","Windows","0","Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\G1001\06.30.26\EOM"
+"WINDT142K3","68467448","JCACCAVA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\G1001\06.30.26\EOM\SGCAP G1001_SMA_Loan_Level 6.30.26 working.xlsx"
+"WINDT142K3","68467455","JCACCAVA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\SG Capital\Monthly Report\2026\G1001\06.30.26\EOM\~$SGCAP G1001_SMA_Loan_Level 6.30.26 working.xlsx"
+"WINDT142K3","68467710","KCARTA","Windows","0","Write + Read","G:\Group_Windt132k\Shared\REIT Team\Saluda Grade\Loan Servicing\2026\06 June 2026\June 2026 Checklist.xlsx"
+"WINDT142K3","68467739","RKUMAR3","Windows","0","Read","G:\Group_Windt132k\Shared\ANICO"

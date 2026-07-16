@@ -1,0 +1,15 @@
+
+INFO: The system global flag 'maintain objects list' needs
+      to be enabled to see local opened files.
+      See Openfiles /? for more information.
+
+
+Files opened remotely via local share points:
+---------------------------------------------
+"Hostname","ID","Accessed By","Type","#Locks","Open Mode","Open File (Path\executable)"
+"WINDT142K3","6","N/A","Windows","0","Write + Read","\PIPE\EVENTLOG"
+"WINDT142K3","68461956","DBETTERS","Windows","0","Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026"
+"WINDT142K3","68461957","DBETTERS","Windows","0","Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026"
+"WINDT142K3","68461971","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026\RLI Cash Reconciliation 06.26.26.xlsx"
+"WINDT142K3","68461981","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026\~$RLI Cash Reconciliation 06.26.26.xlsx"
+"WINDT142K3","68462064","DBETTERS","Windows","0","Write + Read","G:\Group_Windt132k\Shared\RLI Conversion\06 June 2026\20260528-JPM-RLI-TRANS.csv"
