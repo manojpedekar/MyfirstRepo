@@ -1,4 +1,21 @@
-﻿Function Set-WSUSAppPools {
+﻿#Requires -RunAsAdministrator
+
+# WSUS/IIS management relies on the WebAdministration module and its IIS:\ provider,
+# which only work natively in Windows PowerShell 5.1 (Desktop edition). Under
+# PowerShell 7+ (Core) the module loads via a compatibility remoting session that
+# returns deserialized objects and exposes no IIS:\ drive, so the script fails.
+# Re-launch under Windows PowerShell 5.1 if we detect the Core edition.
+If ($PSVersionTable.PSEdition -eq 'Core') {
+    Write-Warning "Detected PowerShell $($PSVersionTable.PSVersion) (Core). Re-launching under Windows PowerShell 5.1..."
+    $ps51 = Join-Path $env:windir 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    If (-not (Test-Path $ps51)) {
+        Throw "Windows PowerShell 5.1 not found at '$ps51'. Please run this script with powershell.exe (not pwsh)."
+    }
+    & $ps51 -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath @args
+    Exit $LASTEXITCODE
+}
+
+Function Set-WSUSAppPools {
     <#	
 	.NOTES
 	===========================================================================
@@ -14,7 +31,8 @@
 	.LINK
 		https://learn.microsoft.com/en-us/troubleshoot/mem/configmgr/windows-server-update-services-best-practices
     #>
-    
+
+    [CmdletBinding()]
     Param (
         [int]$RootWsusPool = 2,
         [int]$WsusReportingWebServiceInGB = 2,
@@ -93,8 +111,9 @@
     
     ForEach ($WsusPool In $WsusPools) {
         Try {
-            # Check if the application pool exists
-            $pool = Get-IISAppPool -Name $WsusPool.NewAppPool -ErrorAction SilentlyContinue
+            # Check if the application pool exists (use WebAdministration provider for
+            # consistency with the create path so $pool | Set-Item works)
+            $pool = Get-Item "IIS:\AppPools\$($WsusPool.NewAppPool)" -ErrorAction SilentlyContinue
             
             # Convert GB to KB
             $MemoryLimit = $WsusPool.MemoryLimit * 1024 * 1024
@@ -150,7 +169,7 @@
                 }
                 
                 # Update memory limit
-                If ($pool.recycling.periodicRestart.privateMemory -ne $MemoryLimit) {
+                If ([int64]$pool.recycling.periodicRestart.privateMemory -ne [int64]$MemoryLimit) {
                     $pool.recycling.periodicRestart.privateMemory = [int]$MemoryLimit
                     $updated = $true
                 }
@@ -194,3 +213,6 @@
     
     Write-Host "`nWSUS Application Pool configuration completed" -ForegroundColor Green
 }
+
+# Run the function when the script is executed directly
+Set-WSUSAppPools -Verbose

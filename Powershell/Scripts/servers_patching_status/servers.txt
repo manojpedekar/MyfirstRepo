@@ -1,0 +1,3 @@
+# One server name per line. Lines starting with # are ignored.
+# server01
+# server02.contoso.com
