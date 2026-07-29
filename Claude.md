@@ -1,3 +1,16 @@
+# Enterprise Environment Context
+
+Assume all solutions are designed for a large-scale enterprise infrastructure with characteristics similar to the following:
+
+* Approximately **50,000 virtual machines (VMs)** globally.
+* More than **180 Active Directory domains** across multiple forests.
+* Multiple geographically distributed data centers.
+* Enterprise-scale Windows Server infrastructure spanning multiple business units and regions.
+
+Design all solutions with enterprise scale, operational efficiency, and automation in mind.
+
+---
+
 # Repository CLAUDE.md
 
 These instructions apply only to this repository and supplement the Global `CLAUDE.md`.
