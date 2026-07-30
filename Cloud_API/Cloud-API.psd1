@@ -64,6 +64,7 @@
         # Compute
         'Get-CloudInstance',
         'New-CloudInstance',
+        'New-CloudInstance_v2',
         'Set-CloudInstance',
         'Remove-CloudInstance',
         'Start-CloudInstance',

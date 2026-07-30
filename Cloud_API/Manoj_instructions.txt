@@ -1,0 +1,90 @@
+    function Protect-String {
+        param (
+            [string]$StringtoEncrypt,
+            [switch]$Computer
+        )
+
+        if ($Computer) {
+            $key = "LocalMachine"
+        } else {
+            $key = "CurrentUser"
+        }
+        $data = [System.Text.Encoding]::UTF8.GetBytes($StringtoEncrypt)
+        $data = [System.Security.Cryptography.ProtectedData]::Protect($data, $null, [System.Security.Cryptography.DataProtectionScope]::$key)
+        [Convert]::ToBase64String($data)
+    }
+    ```
+
+2. Next, modify then run the below command to create your encrypted file. 
+    ```powershell
+    Protect-String "YOUR_API_KEY" | Out-File -FilePath (Join-Path $env:USERPROFILE 'cloudapi.key')
+
+3. Import-Module C:\path\to\Cloud-API.psm1'
+
+**************************
+# For Single InstanceI
+
+  $param = @{
+      SubprojectId     = "subproject-43be98b7-6eed-4dbe-a056-fbbfca1e4b49"
+      Name             = "KCPeerPMC2"          # or your next real server name
+      Cpu              = 4
+      Memory           = 8
+      SecurityGroupIds = "tier-f40267c6-2263-46e2-935f-14c757d92cb9"   # Application
+      Site             = "na-central-kc"
+      DomainDelegation = "globeop.com"
+      ImageId          = "ssnc-cloud-w2k25-base"
+  }
+
+  $inst = New-CloudInstance_v2 @param -Verbose
+  $inst | Format-List name, id, securityGroupIds, tierId, domainDelegation, state
+
+
+
+  # For Multiple
+  
+  ● Here's the London batch. Same structure, but two things change from KC — and one of them needs your confirmation before you run it.
+
+  # ---- Common values (London servers) ----
+  $subId    = "subproject-43be98b7-6eed-4dbe-a056-fbbfca1e4b49"   # <-- CONFIRM: same subproject as KC?
+  $site     = "uk-east-lon"                                       # changed from na-central-kc
+  $imageId  = "ssnc-cloud-w2k25-base"
+  $sgId     = "tier-f40267c6-2263-46e2-935f-14c757d92cb9"         # <-- CONFIRM: valid for London?
+  $domain   = "globeop.com"
+
+  # ---- Per-server spec ----
+  $servers = @(
+      @{ Name = "POC_LONPeerAgent"      ; Cpu = 4; Memory = 16 },
+      @{ Name = "POC_LONResilioGateway" ; Cpu = 4; Memory = 16 },
+      @{ Name = "POC_LONFileServer1"    ; Cpu = 4; Memory = 16 },
+      @{ Name = "POC_LONFileServer2"    ; Cpu = 4; Memory = 16 }
+  )
+
+  # ---- Sequential build ----
+  $results = foreach ($s in $servers) {
+      Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Creating $($s.Name) (CPU $($s.Cpu) / $($s.Memory) GB)..."
+
+      $inst = New-CloudInstance_v2 -SubprojectId $subId `
+                                   -Name $s.Name `
+                                   -Cpu $s.Cpu `
+                                   -Memory $s.Memory `
+                                   -SecurityGroupIds $sgId `
+                                   -Site $site `
+                                   -ImageId $imageId `
+                                   -DomainDelegation $domain `
+                                   -Verbose
+
+      if (-not $inst) { Write-Warning "  $($s.Name): creation FAILED." }
+
+      [PSCustomObject]@{
+          Name             = $s.Name
+          InstanceId       = $inst.id
+          Cpu              = $s.Cpu
+          MemoryGB         = $s.Memory
+          SecurityGroup    = ($inst.securityGroupIds -join ',')
+          DomainDelegation = $inst.domainDelegation
+          State            = $inst.state
+          Result           = if ($inst) { 'Submitted' } else { 'Failed' }
+      }
+  }
+
+  $results | Format-Table -AutoSize
