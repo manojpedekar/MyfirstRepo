@@ -88,3 +88,41 @@
   }
 
   $results | Format-Table -AutoSize
+
+***********
+# Adding volumes
+
+  $volumeName = "E Drive"
+  $volumeSize = 500                                          # GB
+
+  # Instance IDs from your build output (POC_KCPeerPMC excluded - not in the volume list)
+  $targets = @(
+      @{ Name = "POC_KCPeerAgent"       ; Id = "i-caf3be8f-9d1d-4a67-868f-9eca25725b50" },
+      @{ Name = "POC_LONPeerAgent"      ; Id = "i-c18ac4ec-842f-47d2-b30b-b9be2d10c91a" },
+      @{ Name = "POC_KCResilioGateway"  ; Id = "i-6eebbb1e-8931-48c4-b964-1742d893c054" },
+      @{ Name = "POC_LONResilioGateway" ; Id = "i-bd344dac-f64d-43a2-a311-805f6732d707" },
+      @{ Name = "POC_KCFileServer1"     ; Id = "i-d6fc8de5-4644-4bc0-a2d3-2a6d164568fa" },
+      @{ Name = "POC_KCFileServer2"     ; Id = "i-6a2cefe4-99d9-40ae-94ed-d38987516ad6" },
+      @{ Name = "POC_LONFileServer1"    ; Id = "i-b99fe78c-b36b-4844-85bb-17278b4b05b0" },
+      @{ Name = "POC_LONFileServer2"    ; Id = "i-2952375f-62fd-4108-abbf-ec25da072b44" }
+  )
+
+  $results = foreach ($t in $targets) {
+      Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $($t.Name) : creating $volumeSize GB '$volumeName'..."
+
+      # -InstanceId auto-derives subproject/site/zone AND attaches on creation
+      $vol = New-CloudVolume -InstanceId $t.Id -Name $volumeName -Size $volumeSize -Verbose
+
+      if (-not $vol) { Write-Warning "  $($t.Name) : volume FAILED." }
+
+      [PSCustomObject]@{
+          Name       = $t.Name
+          InstanceId = $t.Id
+          VolumeId   = $vol.id
+          SizeGB     = $volumeSize
+          Result     = if ($vol) { 'Created' } else { 'Failed' }
+      }
+  }
+
+  $results | Format-Table -AutoSize
+  
