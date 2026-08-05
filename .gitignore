@@ -1,2 +1,7 @@
 *.exe
 *.dll
+*.csv
+*.sql
+*.png
+*.jpg
+*.jpeg

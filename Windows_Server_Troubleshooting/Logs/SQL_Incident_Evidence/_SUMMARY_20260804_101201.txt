@@ -1,0 +1,70 @@
+﻿SQL CONNECTIVITY INCIDENT - EVIDENCE SUMMARY
+Generated       : 2026-08-04 10:16:07
+Incident time   : 2026-07-22 19:34:00
+Search window   : 2026-07-22 16:34:00 -> 2026-07-22 21:34:00
+SQL server      : ASPYKTOTSSQL2.sscdirect.com
+Client servers  : ASPOTS4.sscdirect.com, ASPOTS5.sscdirect.com, ASPOSTSQL1.sscdirect.com
+==============================================================================
+
+>> PRIME SUSPECT CHECK - did any server reboot inside the window?
+   ASPOSTSQL1                   lastboot=7/19/2026 5:10:21 AM  uptime=389h
+       RAM free 21/160 GB | Disks: C: 34.2GB free / 99.5GB (34% free) | F: 26.7GB free / 75GB (36% free) | G: 121.4GB free / 300GB (40% free) | L: 95.5GB free / 100GB (95% free) | T: 54.8GB free / 100GB (55% free)
+   ASPOTS4                      lastboot=3/21/2026 7:58:01 AM  uptime=3266.2h
+       RAM free 7.9/16 GB | Disks: C: 37.6GB free / 99.7GB (38% free) | F: 31GB free / 39.9GB (78% free)
+   ASPOTS5                      lastboot=3/21/2026 9:10:19 AM  uptime=3265h
+       RAM free 1.2/12 GB | Disks: C: 25.5GB free / 99.5GB (26% free) | F: 31.3GB free / 60GB (52% free)
+   ASPYKTOTSSQL2                lastboot=7/25/2026 7:28:19 AM  uptime=242.7h
+       RAM free 0.6/16 GB | Disks: C: 8.4GB free / 49.5GB (17% free) | F: 5.2GB free / 29.9GB (18% free) | G: 416.1GB free / 899.9GB (46% free) | L: 200GB free / 299.9GB (67% free) | T: 49.2GB free / 49.9GB (99% free)
+
+>> EVIDENCE COUNTS IN WINDOW
+   Reboot/shutdown events    : 4
+   SQL/BAMM service events   : 5
+   SQL engine errors         : 74
+   Windows Update events     : 27
+   Storage/disk errors       : 4
+   Network errors            : 4
+   Cluster events            : 0
+   SQL ERRORLOG lines        : 118
+
+>> SQL ERRORLOG lines nearest the incident:
+   2026-07-22 16:36:17  2026-07-22 16:36:17.91 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 16:36:17  2026-07-22 16:36:17.91 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 16:41:17  2026-07-22 16:41:17.93 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 16:41:17  2026-07-22 16:41:17.93 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 16:46:18  2026-07-22 16:46:18.07 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 16:46:18  2026-07-22 16:46:18.07 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 16:51:18  2026-07-22 16:51:18.10 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 16:51:18  2026-07-22 16:51:18.10 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 16:56:18  2026-07-22 16:56:18.14 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 16:56:18  2026-07-22 16:56:18.14 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:01:18  2026-07-22 17:01:18.17 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:01:18  2026-07-22 17:01:18.17 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:06:18  2026-07-22 17:06:18.34 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:06:18  2026-07-22 17:06:18.34 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:11:18  2026-07-22 17:11:18.37 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:11:18  2026-07-22 17:11:18.37 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:16:18  2026-07-22 17:16:18.50 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:16:18  2026-07-22 17:16:18.50 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:21:18  2026-07-22 17:21:18.54 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:21:18  2026-07-22 17:21:18.54 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:26:18  2026-07-22 17:26:18.57 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:26:18  2026-07-22 17:26:18.57 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:31:18  2026-07-22 17:31:18.61 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:31:18  2026-07-22 17:31:18.61 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:36:18  2026-07-22 17:36:18.66 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:36:18  2026-07-22 17:36:18.66 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:41:18  2026-07-22 17:41:18.69 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:41:18  2026-07-22 17:41:18.69 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:46:18  2026-07-22 17:46:18.84 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:46:18  2026-07-22 17:46:18.84 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:51:18  2026-07-22 17:51:18.97 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:51:18  2026-07-22 17:51:18.97 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 17:56:19  2026-07-22 17:56:19.00 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 17:56:19  2026-07-22 17:56:19.00 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 18:01:19  2026-07-22 18:01:19.03 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 18:01:19  2026-07-22 18:01:19.03 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 18:06:19  2026-07-22 18:06:19.06 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 18:06:19  2026-07-22 18:06:19.06 Logon       Error: 18456, Severity: 14, State: 5.
+   2026-07-22 18:11:19  2026-07-22 18:11:19.09 Logon       Login failed for user 'SSCDIRECT\ASPYKTOTSSQL2SQLSafe'. Reason: Could not find a login matching the name provided. [CLIENT: 10.128.11.183]
+   2026-07-22 18:11:19  2026-07-22 18:11:19.09 Logon       Error: 18456, Severity: 14, State: 5.
+

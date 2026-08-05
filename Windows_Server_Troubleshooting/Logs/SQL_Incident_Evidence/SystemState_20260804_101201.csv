@@ -1,0 +1,5 @@
+"Server","OS","LastBootUpTime","UptimeHours","RebootedInWindow","TotalRAM_GB","FreeRAM_GB","Disks"
+"ASPOSTSQL1","Microsoft Windows Server 2016 Standard","7/19/2026 5:10:21 AM","389","False","160","21","C: 34.2GB free / 99.5GB (34% free) | F: 26.7GB free / 75GB (36% free) | G: 121.4GB free / 300GB (40% free) | L: 95.5GB free / 100GB (95% free) | T: 54.8GB free / 100GB (55% free)"
+"ASPOTS4","Microsoft Windows Server 2012 R2 Standard","3/21/2026 7:58:01 AM","3266.2","False","16","7.9","C: 37.6GB free / 99.7GB (38% free) | F: 31GB free / 39.9GB (78% free)"
+"ASPOTS5","Microsoft Windows Server 2019 Standard","3/21/2026 9:10:19 AM","3265","False","12","1.2","C: 25.5GB free / 99.5GB (26% free) | F: 31.3GB free / 60GB (52% free)"
+"ASPYKTOTSSQL2","Microsoft Windows Server 2016 Standard","7/25/2026 7:28:19 AM","242.7","False","16","0.6","C: 8.4GB free / 49.5GB (17% free) | F: 5.2GB free / 29.9GB (18% free) | G: 416.1GB free / 899.9GB (46% free) | L: 200GB free / 299.9GB (67% free) | T: 49.2GB free / 49.9GB (99% free)"

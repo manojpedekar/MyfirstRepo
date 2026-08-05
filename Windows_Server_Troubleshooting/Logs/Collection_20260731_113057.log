@@ -1,0 +1,23 @@
+[2026-07-31 11:30:57] [INFO] === SQL connectivity incident evidence collection started ===
+[2026-07-31 11:30:57] [INFO] Incident time : 2026-07-22 19:34:00
+[2026-07-31 11:30:57] [INFO] Search window  : 2026-07-22 16:34:00  ->  2026-07-22 21:34:00
+[2026-07-31 11:30:57] [INFO] SQL server     : ASPYKTOTSSQL2.sscdirect.com
+[2026-07-31 11:30:57] [INFO] Client servers : ASPOTS4.sscdirect.com, ASPOTS5.sscdirect.com, ASPOSTSQL1.sscdirect.com
+[2026-07-31 11:30:57] [INFO] Output folder  : C:\temp\SQL_Incident_Evidence
+[2026-07-31 11:30:57] [INFO] Collecting from 4 servers in parallel...
+[2026-07-31 11:32:07] [INFO]   ...done: ASPYKTOTSSQL2.sscdirect.com [Completed]
+[2026-07-31 11:32:07] [INFO]   ...done: ASPOTS4.sscdirect.com [Completed]
+[2026-07-31 11:32:07] [INFO]   ...done: ASPOTS5.sscdirect.com [Completed]
+[2026-07-31 11:32:07] [INFO]   ...done: ASPOSTSQL1.sscdirect.com [Completed]
+[2026-07-31 11:32:07] [INFO] Exporting evidence categories...
+[2026-07-31 11:32:07] [INFO]   SystemState     :    4 rows -> SystemState_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   Reboots         :    4 rows -> Reboots_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   Services        :    5 rows -> Services_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   SqlAppErrors    :   74 rows -> SqlAppErrors_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   WindowsUpdate   :   27 rows -> WindowsUpdate_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   Storage         :    4 rows -> Storage_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   Network         :    4 rows -> Network_20260731_113057.csv
+[2026-07-31 11:32:07] [INFO]   Cluster         :    0 rows (none found)
+[2026-07-31 11:32:07] [INFO]   SqlErrorLog     :    1 rows -> SqlErrorLog_20260731_113057.csv
+[2026-07-31 11:32:08] [INFO] Summary written: _SUMMARY_20260731_113057.txt
+[2026-07-31 11:32:08] [INFO] === Collection complete. Review _SUMMARY_*.txt first, then the CSVs. ===
