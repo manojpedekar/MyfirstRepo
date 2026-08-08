@@ -1,6 +1,0 @@
-
-enabling audit policy on windows for file share access:
- 
-auditpol /set /subcategory:"File Share" /success:enable
-# Size the Security log so a week doesn't roll over mid-capture:
-wevtutil sl Security /ms:1073741824   # 1 GB; adjust to your event rate
