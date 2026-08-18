@@ -1,0 +1,205 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "RDS license servers by domain (MSSQL) mapped to network zones (MySQL) via IP/subnet containment. Replace placeholder table/column names before use. See companion README.md.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "About / Setup",
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "### RDS License Servers → Network Zones\nSelect a **Domain** above. The left panel lists RDS license servers for that domain (MSSQL). The right panel resolves each server IP to its **network zone** (MySQL, subnet/IP containment). The bottom panel joins both on the exact IP address.\n\n**Before use — replace placeholders:**\n- MSSQL: `dbo.RdsLicenseServers` (`Domain`, `ServerName`, `IpAddress`, `LicenseType`, `Status`)\n- MySQL: `network_zones` (`zone_id`, `zone_name`, `ip_or_subnet` — either a single IPv4 or CIDR like `10.1.0.0/16`)\n\n**Limitation:** subnet math is **IPv4 only** (`INET_ATON`). For IPv6 use `INET6_ATON` and 128-bit comparison."
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "RDS License Servers — Domain: $domain",
+      "description": "Source: RDS license DB (MSSQL). Filtered by the selected domain(s).",
+      "datasource": { "type": "mssql", "uid": "${rds_ds}" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 5 },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
+      "fieldConfig": {
+        "defaults": { "custom": { "filterable": true, "align": "auto" } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "mssql", "uid": "${rds_ds}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT Domain, ServerName AS rds_server, IpAddress AS ip_address, LicenseType, Status FROM dbo.RdsLicenseServers WHERE Domain IN (${domain:singlequote}) ORDER BY ServerName"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Network Zone Resolution (by IP / subnet)",
+      "description": "Source: network-zone DB (MySQL). Resolves each RDS server IP (passed via the hidden $rds_ip variable) to a zone using exact-IP match or CIDR containment.",
+      "datasource": { "type": "mysql", "uid": "${zone_ds}" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 5 },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
+      "fieldConfig": {
+        "defaults": { "custom": { "filterable": true, "align": "auto" } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "datasource": { "type": "mysql", "uid": "${zone_ds}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT jt.ip AS ip_address, z.zone_id AS zone_id, z.zone_name AS zone_name, z.ip_or_subnet AS matched_entry FROM JSON_TABLE(CONCAT('[\"', REPLACE('${rds_ip:csv}', ',', '\",\"'), '\"]'), '$[*]' COLUMNS (ip VARCHAR(45) PATH '$')) AS jt JOIN network_zones z ON ((LOCATE('/', z.ip_or_subnet) = 0 AND z.ip_or_subnet = jt.ip) OR (LOCATE('/', z.ip_or_subnet) > 0 AND (INET_ATON(jt.ip) >> (32 - CAST(SUBSTRING_INDEX(z.ip_or_subnet, '/', -1) AS UNSIGNED))) = (INET_ATON(SUBSTRING_INDEX(z.ip_or_subnet, '/', 1)) >> (32 - CAST(SUBSTRING_INDEX(z.ip_or_subnet, '/', -1) AS UNSIGNED))))) ORDER BY jt.ip"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "RDS Server → Network Zone (joined by IP)",
+      "description": "Mixed datasource. MSSQL RDS rows joined to MySQL zone rows on the exact ip_address column (outer join).",
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 15 },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
+      "fieldConfig": {
+        "defaults": { "custom": { "filterable": true, "align": "auto" } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "mssql", "uid": "${rds_ds}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT Domain, ServerName AS rds_server, IpAddress AS ip_address, LicenseType, Status FROM dbo.RdsLicenseServers WHERE Domain IN (${domain:singlequote})"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "mysql", "uid": "${zone_ds}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT jt.ip AS ip_address, z.zone_id AS zone_id, z.zone_name AS zone_name FROM JSON_TABLE(CONCAT('[\"', REPLACE('${rds_ip:csv}', ',', '\",\"'), '\"]'), '$[*]' COLUMNS (ip VARCHAR(45) PATH '$')) AS jt JOIN network_zones z ON ((LOCATE('/', z.ip_or_subnet) = 0 AND z.ip_or_subnet = jt.ip) OR (LOCATE('/', z.ip_or_subnet) > 0 AND (INET_ATON(jt.ip) >> (32 - CAST(SUBSTRING_INDEX(z.ip_or_subnet, '/', -1) AS UNSIGNED))) = (INET_ATON(SUBSTRING_INDEX(z.ip_or_subnet, '/', 1)) >> (32 - CAST(SUBSTRING_INDEX(z.ip_or_subnet, '/', -1) AS UNSIGNED))))))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "ip_address", "mode": "outer" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "Domain": 0,
+              "rds_server": 1,
+              "ip_address": 2,
+              "zone_id": 3,
+              "zone_name": 4,
+              "LicenseType": 5,
+              "Status": 6
+            },
+            "renameByName": {}
+          }
+        }
+      ]
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["rds", "windows", "license", "network-zone", "mssql", "mysql"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "RDS DB (MSSQL)",
+        "multi": false,
+        "name": "rds_ds",
+        "options": [],
+        "query": "mssql",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Zone DB (MySQL)",
+        "multi": false,
+        "name": "zone_ds",
+        "options": [],
+        "query": "mysql",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "mssql", "uid": "${rds_ds}" },
+        "definition": "SELECT DISTINCT Domain FROM dbo.RdsLicenseServers ORDER BY Domain",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Domain",
+        "multi": true,
+        "name": "domain",
+        "options": [],
+        "query": "SELECT DISTINCT Domain FROM dbo.RdsLicenseServers ORDER BY Domain",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "mssql", "uid": "${rds_ds}" },
+        "definition": "SELECT DISTINCT IpAddress FROM dbo.RdsLicenseServers WHERE Domain IN (${domain:singlequote})",
+        "hide": 2,
+        "includeAll": true,
+        "label": "RDS Server IPs (hidden)",
+        "multi": true,
+        "name": "rds_ip",
+        "options": [],
+        "query": "SELECT DISTINCT IpAddress FROM dbo.RdsLicenseServers WHERE Domain IN (${domain:singlequote})",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "RDS License Servers & Network Zones",
+  "uid": "rds-lic-zone-v1",
+  "version": 1,
+  "weekStart": ""
+}

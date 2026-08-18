@@ -1,0 +1,167 @@
+ ▐▛███▜▌   Claude Code v2.1.229
+▝▜█████▛▘  Opus 4.8 · Amazon Bedrock
+  ▘▘ ▝▝    ~\OneDrive - SS&C Technologies, Inc\Documents\GitHub\Personal\Ro…
+
+
+❯ C:\Users\mpedekar\Downloads\HomeDirs_SCTASK2162148_3.txt                      
+                                                                                
+  I am copying data from windows file server to the pure storage. getting       
+  attached error. What we now know                                              
+                                                                                
+  You have effectively ruled out the obvious filename/path explanations:        
+                                                                                
+  Original .tif fails.                                                          
+  Rename the file → still fails.                                                
+  Change .tif to .txt → still fails.                                            
+  Copy the file from the source to C:\ → works.                                 
+  Copy the renamed file from C:\ to Pure → still fails.                         
+  Try a different folder on the same Pure destination → still fails.            
+  Mapping the Pure share to a shorter drive letter → still fails.               
+  Other files of the same type do successfully copy.                            
+  Robocopy reports Windows ERROR 123, while Explorer reports "The file name you 
+  specified is not valid or too long."                                          
+                                                                                
+  The Robocopy log also shows that the failures aren't limited to TIFFs. It     
+  contains .jpg, .gif, .bmp, .htm, .cmd, etc., all returning ERROR 123.         
+  ⎿  ⧉ Selected 1 lines from ..\file_migration\Manage-Shares_v2.ps1 in Visual 
+     Studio Code
+
+● I'll look at the robocopy log to analyze the failure pattern.
+
+  Read 1 file (ctrl+o to expand)
+
+● This is a textbook Alternate Data Stream (ADS) problem, not a path or filename
+  problem. Your own test matrix already proves that — let me explain why, then
+  give you the one command that confirms it and the way to fix the migration.
+
+  Why it's almost certainly ADS
+
+  Look at what your tests eliminated and what they left standing:
+
+  ┌────────────────────────────┬──────────┬─────────────────────────────────┐
+  │            Test            │  Result  │        What it rules out        │
+  ├────────────────────────────┼──────────┼─────────────────────────────────┤
+  │ Rename the file            │ still    │ the name                        │
+  │                            │ fails    │                                 │
+  ├────────────────────────────┼──────────┼─────────────────────────────────┤
+  │ Change .tif → .txt         │ still    │ the extension                   │
+  │                            │ fails    │                                 │
+  ├────────────────────────────┼──────────┼─────────────────────────────────┤
+  │ Copy source → C:\          │ works    │ the file's primary data is      │
+  │                            │          │ fine, and NTFS is happy         │
+  ├────────────────────────────┼──────────┼─────────────────────────────────┤
+  │ Copy renamed file C:\ →    │ fails    │ it's something travelling with  │
+  │ Pure                       │          │ the file, not the path          │
+  ├────────────────────────────┼──────────┼─────────────────────────────────┤
+  │ Different Pure folder /    │ still    │ the destination path            │
+  │ shorter drive letter       │ fails    │                                 │
+  ├────────────────────────────┼──────────┼─────────────────────────────────┤
+  │ Other files of the same    │ work     │ the file type                   │
+  │ type                       │          │                                 │
+  └────────────────────────────┴──────────┴─────────────────────────────────┘
+
+  Something is attached to these specific files that (a) survives rename and
+  extension change, (b) survives a copy to NTFS, and (c) is rejected only by the
+  Pure destination. That is the signature of an NTFS Alternate Data Stream.
+
+  The corroborating evidence is in the file list itself: almost every failure is
+  an internet-sourced image or joke file — \home\kr\Personal\ is full of
+  .jpg/.gif/.bmp downloads, plus .htm and .cmd. Files like these carry a
+  Zone.Identifier stream (Mark-of-the-Web) that Windows stamps on anything
+  downloaded from a browser or email. Robocopy copies alternate data streams by
+  default (there is no switch to disable it), and Explorer does too — so when
+  the write reaches the Pure Storage FlashBlade SMB share, which does not 
+  implement NTFS named streams, the stream write fails with:
+
+  - Win32 ERROR 123 / 0x7B (ERROR_INVALID_NAME) → what Robocopy reports
+  - "The file name you specified is not valid or too long" → the exact Explorer
+  wording for a rejected stream name
+
+  The filename:streamname:$DATA syntax is what's "invalid" to the target — not
+  your file's name.
+
+  ▎ Fact vs. assumption: The test-matrix logic and the 
+  ▎ FlashBlade-doesn't-support-ADS behavior are facts. That the specific stream 
+  ▎ is Zone.Identifier is my strong assumption based on the file population — 
+  ▎ the command below confirms exactly which stream(s) are present.
+
+  Confirm it in 10 seconds
+
+  Run this against any one failing file (PowerShell):
+
+  Get-Item -LiteralPath 'D:\Homedirs\dt72023\home\kr\Personal\ass.jpg' -Stream *
+
+  Or the classic:
+
+  dir /r "D:\Homedirs\dt72023\home\kr\Personal"
+
+  If you see a second stream (e.g. :Zone.Identifier:$DATA, or something like
+  :AFP_AfpInfo, :com.apple..., a scanner/AV stream, etc.) alongside :$DATA, that
+  is the culprit. A clean file will show only :$DATA.
+
+  How to fix the migration
+
+  The goal is to strip the extra stream(s) — the primary file data is untouched.
+  Options, in order of preference:
+
+  1. If it's only Zone.Identifier (most likely): unblock in place, then re-run
+  Robocopy.
+  Get-ChildItem -LiteralPath 'D:\Homedirs' -Recurse -File | Unblock-File
+  1. Unblock-File removes only the Zone.Identifier stream and nothing else —
+  safe and reversible in effect.
+  2. If there are other/unknown streams, remove every non-primary stream
+  explicitly:
+  Get-ChildItem -LiteralPath 'D:\Homedirs' -Recurse -File |
+    ForEach-Object {
+        Get-Item -LiteralPath $_.FullName -Stream * |
+          Where-Object Stream -ne ':$DATA' |
+          ForEach-Object { Remove-Item -LiteralPath $_.FileName -Stream
+  $_.Stream }
+    }
+
+  Either way, the corrected copy operation itself is unchanged — the streams
+  simply no longer exist to be rejected.
+
+  ⚠️ Before you strip anything on the source, confirm with the data owner that
+  no stream is meaningful (rare, but scanner/DMS products occasionally store
+  metadata in ADS). The safest pattern is: copy to an NTFS staging area first,
+  strip there, then Robocopy the staged copy to Pure — leaving the original file
+  server pristine until the migration is signed off.
+
+  Recommendation for a 50k-VM-scale home-dir migration
+
+  Doing this by hand across Homedirs won't scale, and a blind recursive
+  Unblock-File gives you no audit trail. Given your repo already houses
+  file_migration tooling, I'd add a versioned pre-flight script (e.g.
+  Repair-AdsForMigration_v1.ps1) that:
+
+  - Scans a source tree, reports every file with extra streams (stream name,
+  size) to a timestamped CSV in C:\temp\ — so you have evidence of what was
+  changed before touching anything;
+  - Runs in audit mode by default, with an explicit -Remediate switch to
+  actually strip;
+  - Lets you scope which streams to remove (Zone.Identifier only vs. all
+  non-:$DATA);
+  - Uses -ThrottleLimit parallelism (PS7) with a sequential fallback for Windows
+  PowerShell 5.1 / WS2008R2;
+  - Logs start/finish/errors/summary per your repo standards.
+
+  Want me to build that script? I'll follow the repo conventions (versioned,
+  C:\temp\ output, structured logging, -WhatIf support, WS2008R2-compatible
+  variant).
+
+  TL;DR
+
+  Your failing files carry an NTFS Alternate Data Stream (almost certainly
+  Zone.Identifier / Mark-of-the-Web on downloaded images). Robocopy copies
+  streams by default; the Pure FlashBlade SMB target doesn't support named 
+  streams, so every stream write throws ERROR 123 / "file name not valid or too 
+  long." It's not the name, path, or type — that's why rename, extension change,
+  and copy-from-C: all failed to help while some files copy fine. Confirm with
+  Get-Item -Stream * (or dir /r), then strip the stream with Unblock-File (or
+  remove all non-:$DATA streams) and re-run the copy. Prefer
+  strip-on-a-staging-copy so the source stays intact until sign-off. I can build
+  you a versioned, audited, parallel pre-flight script to do this at scale —
+  just say the word.
+
+✻ Baked for 1m 28s

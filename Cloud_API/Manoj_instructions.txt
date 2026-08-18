@@ -1,3 +1,6 @@
+ Open Powershell 7.2
+
+ 1.
     function Protect-String {
         param (
             [string]$StringtoEncrypt,
